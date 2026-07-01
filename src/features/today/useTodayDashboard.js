@@ -4,6 +4,9 @@ import { useCommissions } from "../commissions/useCommissions"
 import { useContacts } from "../contacts/useContacts"
 import { useTasks } from "../tasks/useTasks"
 import { useActivity } from "../activity/useActivity"
+import { useCalendar } from "../calendar/useCalendar"
+import { useGoogleCalendar } from "../google-calendar/useGoogleCalendar"
+import { mergeCalendarEvents, filterEventsOnDate } from "../calendar/utils"
 import { flattenTasksForToday } from "../tasks/utils"
 import {
   buildCollectionsDue,
@@ -24,10 +27,16 @@ export function useTodayDashboard() {
   const { contacts } = useContacts()
   const { tasks } = useTasks()
   const { activity } = useActivity()
+  const { events: maxOsEvents } = useCalendar()
+  const { googleEvents } = useGoogleCalendar()
 
   const todayISO = getTodayISO()
 
   return useMemo(() => {
+    const calendarEventsToday = filterEventsOnDate(
+      mergeCalendarEvents(maxOsEvents, googleEvents),
+      todayISO
+    )
     const collections = buildCollectionsDue(orders, todayISO)
     const followUps = buildContactFollowUps(contacts, todayISO)
     const followUpsFlat = flattenFollowUps(followUps)
@@ -56,6 +65,7 @@ export function useTodayDashboard() {
       commissionSnapshot,
       topMetrics,
       activity,
+      calendarEventsToday,
     }
-  }, [orders, commissions, contacts, tasks, activity, todayISO])
+  }, [orders, commissions, contacts, tasks, activity, maxOsEvents, googleEvents, todayISO])
 }

@@ -11,6 +11,7 @@ import { useTodayBuild } from "../useTodayBuild"
 const PRIORITY_LIMIT = 5
 
 const priorityVariants = {
+  0: "success",
   1: "danger",
   2: "warning",
   3: "primary",
@@ -19,6 +20,7 @@ const priorityVariants = {
 }
 
 const priorityLabels = {
+  0: "Calendar",
   1: "Urgent",
   2: "Collections",
   3: "Follow-ups",
@@ -32,6 +34,27 @@ function formatGeneratedTime(date) {
     hour: "numeric",
     minute: "2-digit",
   })
+}
+
+function ActionRowContent({ action }) {
+  return (
+    <>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600/20 text-[11px] font-semibold text-indigo-400">
+        {action.order}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-[13px] font-medium text-zinc-100">{action.label}</p>
+          <Badge variant={priorityVariants[action.priority]} className="text-[10px]">
+            {priorityLabels[action.priority]}
+          </Badge>
+        </div>
+        {action.detail && (
+          <p className="mt-0.5 truncate text-xs text-zinc-500">{action.detail}</p>
+        )}
+      </div>
+    </>
+  )
 }
 
 export function BuildMyDayPanel() {
@@ -82,25 +105,23 @@ export function BuildMyDayPanel() {
           <ol className="space-y-1.5">
             {visible.map((action) => (
               <li key={action.order}>
-                <Link
-                  to={action.link}
-                  className="flex items-start gap-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/50 px-3 py-2.5 transition-colors hover:border-indigo-800/60 hover:bg-zinc-900/50"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600/20 text-[11px] font-semibold text-indigo-400">
-                    {action.order}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-[13px] font-medium text-zinc-100">{action.label}</p>
-                      <Badge variant={priorityVariants[action.priority]} className="text-[10px]">
-                        {priorityLabels[action.priority]}
-                      </Badge>
-                    </div>
-                    {action.detail && (
-                      <p className="mt-0.5 truncate text-xs text-zinc-500">{action.detail}</p>
-                    )}
-                  </div>
-                </Link>
+                {action.externalLink ? (
+                  <a
+                    href={action.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/50 px-3 py-2.5 transition-colors hover:border-indigo-800/60 hover:bg-zinc-900/50"
+                  >
+                    <ActionRowContent action={action} />
+                  </a>
+                ) : (
+                  <Link
+                    to={action.link}
+                    className="flex items-start gap-2.5 rounded-lg border border-zinc-800/60 bg-zinc-950/50 px-3 py-2.5 transition-colors hover:border-indigo-800/60 hover:bg-zinc-900/50"
+                  >
+                    <ActionRowContent action={action} />
+                  </Link>
+                )}
               </li>
             ))}
           </ol>

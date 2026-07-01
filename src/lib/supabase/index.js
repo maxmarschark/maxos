@@ -5,6 +5,8 @@ export {
   ensureSupabaseSession,
   getSupabaseUserId,
   signInWithGoogle,
+  connectGoogleCalendar,
+  getGoogleAccessToken,
   signOut,
   getUserDisplayName,
   getUserEmail,

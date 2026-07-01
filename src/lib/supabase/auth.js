@@ -47,6 +47,48 @@ export async function signInWithGoogle() {
   return { ok: true }
 }
 
+export async function connectGoogleCalendar() {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured" }
+  }
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}${window.location.pathname}`,
+      scopes: "https://www.googleapis.com/auth/calendar.readonly",
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
+      },
+    },
+  })
+
+  if (error) {
+    console.warn(`${LOG_PREFIX} Google Calendar connect failed:`, error.message)
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}
+
+export async function getGoogleAccessToken() {
+  const supabase = getSupabaseClient()
+  if (!supabase) return null
+
+  let {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session?.provider_token) {
+    const { data } = await supabase.auth.refreshSession()
+    session = data.session
+  }
+
+  return session?.provider_token ?? null
+}
+
 export async function signOut() {
   const supabase = getSupabaseClient()
   if (!supabase) {

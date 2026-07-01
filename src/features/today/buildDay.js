@@ -6,6 +6,7 @@ import {
   getTaskLink,
 } from "../tasks/utils"
 import { PRIORITY_RANK } from "../tasks/constants"
+import { formatEventTimeRange, timeToMinutes } from "../calendar/utils"
 
 export function buildMyDay({
   orders,
@@ -13,13 +14,35 @@ export function buildMyDay({
   accounts,
   commissions,
   tasks,
+  calendarEvents = [],
   todayISO,
 }) {
   const actions = []
 
+  const todayBlocks = calendarEvents
+    .filter((event) => event.eventDate && isSameDay(event.eventDate, todayISO))
+    .sort((a, b) => timeToMinutes(a.eventTime) - timeToMinutes(b.eventTime))
+
+  todayBlocks.forEach((event) => {
+    const sourceLabel = event.source === "google" ? "Google" : "Max OS"
+    actions.push({
+      priority: 0,
+      sort: timeToMinutes(event.eventTime),
+      label: event.title,
+      detail: `${formatEventTimeRange(event)} · ${sourceLabel} calendar`,
+      link: event.source === "google" && event.htmlLink ? event.htmlLink : "/calendar",
+      calendarBlock: true,
+      externalLink: Boolean(event.source === "google" && event.htmlLink),
+      eventSource: event.source,
+    })
+  })
+
+  const busyBlocks = todayBlocks.filter((event) => event.eventTime)
+
   tasks
     .filter((t) => isTaskActionable(t) && t.priority === "Urgent" && t.dueDate && isOverdue(t.dueDate, todayISO))
     .forEach((task) => {
+      if (taskConflictsWithCalendar(task, busyBlocks)) return
       actions.push({
         priority: 1,
         sort: daysBetween(task.dueDate, todayISO) * 10 + (PRIORITY_RANK[task.priority] ?? 0),
@@ -204,7 +227,11 @@ export function buildMyDay({
 
   const seen = new Set()
   const deduped = actions.filter((a) => {
-    const key = a.taskId ? `task-${a.taskId}` : a.label
+    const key = a.calendarBlock
+      ? `calendar-${a.label}-${a.sort}`
+      : a.taskId
+        ? `task-${a.taskId}`
+        : a.label
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -212,10 +239,22 @@ export function buildMyDay({
 
   deduped.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority
+    if (a.priority === 0 && b.priority === 0) return a.sort - b.sort
     return b.sort - a.sort
   })
 
   return deduped.map((action, index) => ({ ...action, order: index + 1 }))
+}
+
+function taskConflictsWithCalendar(task, busyBlocks) {
+  if (!task.dueTime || busyBlocks.length === 0) return false
+  const start = timeToMinutes(task.dueTime)
+  const end = start + 30
+  return busyBlocks.some((block) => {
+    const blockStart = timeToMinutes(block.eventTime)
+    const blockEnd = block.endTime ? timeToMinutes(block.endTime) : blockStart + 60
+    return start < blockEnd && blockStart < end
+  })
 }
 
 function formatTaskDetail(task) {

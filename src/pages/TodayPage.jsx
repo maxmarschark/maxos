@@ -14,6 +14,7 @@ import { FollowUpsSection } from "../features/today/components/FollowUpsSection"
 import { OrdersAttentionSection } from "../features/today/components/OrdersAttentionSection"
 import { CommissionSnapshot } from "../features/today/components/CommissionSnapshot"
 import { ActivityFeed } from "../features/today/components/ActivityFeed"
+import { TodayCalendarSection } from "../features/today/components/TodayCalendarSection"
 import { getTodayISO } from "../features/today/utils"
 import { useToast } from "../components/ui/useToast"
 
@@ -55,6 +56,7 @@ export function TodayPage() {
       <TopMetricsRow metrics={dashboard.topMetrics} />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <TodayCalendarSection eventsToday={dashboard.calendarEventsToday} />
         <TasksDueSection
           tasksFlat={dashboard.tasksDueFlat}
           onCompleteTask={handleCompleteTask}
