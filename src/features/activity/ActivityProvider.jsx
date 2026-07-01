@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCallback, useMemo, useState } from "react"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { buildActivityTimeline, buildRelationshipContext } from "../../lib/relationships"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
@@ -22,49 +22,20 @@ export function ActivityProvider({ children }) {
   const { tasks } = useTasks()
 
   const [cloudEvents, setCloudEvents] = useState([])
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudActivity }) => initCloudActivity()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setCloudEvents(result.events)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Activity] LOCAL — falling back to local timeline")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Activity] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudActivity } = await loadCloudApi()
-      const result = await initCloudActivity()
-      if (cancelled) return
-
-      if (result.ok) {
-        setCloudEvents(result.events)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Activity] LOCAL — using relationship timeline fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Activity",
+    initCloud,
+    onCloudLoaded,
+  })
 
   const localActivity = useMemo(() => {
     const ctx = buildRelationshipContext({

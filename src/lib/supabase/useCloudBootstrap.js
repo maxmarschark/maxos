@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { isSupabaseConfigured } from "./env"
-import { createLogPrefix } from "./cloudRepository"
+import { createLogPrefix, describeCloudFailure } from "./cloudRepository"
 
-export function useCloudBootstrap({ moduleName, loadCloudApi, onCloudLoaded }) {
+export function useCloudBootstrap({ moduleName, initCloud, onCloudLoaded }) {
   const [storageMode, setStorageMode] = useState("local")
   const storageModeRef = useRef("local")
   const LOG_PREFIX = createLogPrefix(moduleName)
@@ -12,10 +12,13 @@ export function useCloudBootstrap({ moduleName, loadCloudApi, onCloudLoaded }) {
     setStorageMode(mode)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn(`${LOG_PREFIX} LOCAL — falling back to localStorage`)
-    setMode("local")
-  }, [LOG_PREFIX, setMode])
+  const fallBackToLocal = useCallback(
+    (reason) => {
+      console.warn(`${LOG_PREFIX} LOCAL — falling back to localStorage${reason ? ` (${reason})` : ""}`)
+      setMode("local")
+    },
+    [LOG_PREFIX, setMode]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -26,27 +29,30 @@ export function useCloudBootstrap({ moduleName, loadCloudApi, onCloudLoaded }) {
         return
       }
 
-      const api = await loadCloudApi()
-      const result = await api.init()
-      if (cancelled) return
+      try {
+        const result = await initCloud()
+        if (cancelled) return
 
-      if (result.ok) {
-        onCloudLoaded(result)
-        setMode("cloud")
-        return
+        if (result.ok) {
+          onCloudLoaded(result)
+          setMode("cloud")
+          console.info(`${LOG_PREFIX} CLOUD — ${result.logMessage ?? "connected"}`)
+          return
+        }
+
+        console.info(`${LOG_PREFIX} LOCAL — ${describeCloudFailure(result)}`)
+      } catch (error) {
+        if (!cancelled) {
+          console.info(`${LOG_PREFIX} LOCAL — ${error?.message ?? "bootstrap failed"}`)
+        }
       }
-
-      console.info(
-        `${LOG_PREFIX} LOCAL — using localStorage fallback`,
-        result.reason ? `(${result.reason})` : ""
-      )
     }
 
     bootstrap()
     return () => {
       cancelled = true
     }
-  }, [LOG_PREFIX, loadCloudApi, onCloudLoaded, setMode])
+  }, [LOG_PREFIX, initCloud, onCloudLoaded, setMode])
 
   return { storageMode, storageModeRef, setMode, fallBackToLocal }
 }

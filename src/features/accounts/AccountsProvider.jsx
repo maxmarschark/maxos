@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { ACCOUNTS_STORAGE_KEY, EMPTY_ACCOUNT } from "./constants"
 import { SEED_ACCOUNTS } from "./seed"
 import { AccountsContext } from "./accounts-context"
@@ -16,49 +16,20 @@ function loadCloudApi() {
 
 export function AccountsProvider({ children }) {
   const [accounts, setAccounts] = useState(loadLocalAccounts)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudAccounts }) => initCloudAccounts()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setAccounts(result.accounts)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Accounts] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Accounts] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudAccounts } = await loadCloudApi()
-      const result = await initCloudAccounts()
-      if (cancelled) return
-
-      if (result.ok) {
-        setAccounts(result.accounts)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Accounts] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Accounts",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(ACCOUNTS_STORAGE_KEY, accounts)

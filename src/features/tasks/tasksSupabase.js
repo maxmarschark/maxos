@@ -14,5 +14,7 @@ export const updateCloudTask = (task) => crud.update(task).then((r) => (r.ok ? {
 export const deleteCloudTask = (id) => crud.remove(id)
 export async function initCloudTasks() {
   const result = await crud.init()
-  return result.ok ? { ok: true, tasks: result.rows } : result
+  return result.ok
+    ? { ok: true, tasks: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import {
@@ -32,49 +32,20 @@ export function ContactsProvider({ children }) {
 
   const [contacts, setContacts] = useState(loadLocalContacts)
   const [importBatches, setImportBatches] = useState(loadImportBatches)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudContacts }) => initCloudContacts()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setContacts(result.contacts)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Contacts] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Contacts] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudContacts } = await loadCloudApi()
-      const result = await initCloudContacts()
-      if (cancelled) return
-
-      if (result.ok) {
-        setContacts(result.contacts)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Contacts] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Contacts",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(CONTACTS_STORAGE_KEY, contacts)

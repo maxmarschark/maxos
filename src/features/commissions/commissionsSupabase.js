@@ -19,5 +19,7 @@ export const upsertCloudCommission = (meta) =>
 export const deleteCloudCommission = (orderId) => crud.remove(orderId)
 export async function initCloudCommissions() {
   const result = await crud.init()
-  return result.ok ? { ok: true, commissions: result.rows } : result
+  return result.ok
+    ? { ok: true, commissions: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

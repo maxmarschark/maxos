@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import { ORDERS_STORAGE_KEY, EMPTY_ORDER } from "./constants"
@@ -22,49 +22,20 @@ export function OrdersProvider({ children }) {
   const { brands } = useBrands()
 
   const [orders, setOrders] = useState(loadLocalOrders)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudOrders }) => initCloudOrders()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setOrders(result.orders)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Orders] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Orders] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudOrders } = await loadCloudApi()
-      const result = await initCloudOrders()
-      if (cancelled) return
-
-      if (result.ok) {
-        setOrders(result.orders)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Orders] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Orders",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(ORDERS_STORAGE_KEY, orders)

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { CALENDAR_STORAGE_KEY, EMPTY_CALENDAR_EVENT } from "./constants"
 import { CalendarContext } from "./calendar-context"
 
@@ -15,49 +15,20 @@ function loadCloudApi() {
 
 export function CalendarProvider({ children }) {
   const [events, setEvents] = useState(loadLocalEvents)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudCalendar }) => initCloudCalendar()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setEvents(result.events)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Calendar] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Calendar] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudCalendar } = await loadCloudApi()
-      const result = await initCloudCalendar()
-      if (cancelled) return
-
-      if (result.ok) {
-        setEvents(result.events)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Calendar] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Calendar",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(CALENDAR_STORAGE_KEY, events)

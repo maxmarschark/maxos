@@ -1,4 +1,10 @@
-import { probeSupabaseClient, resolveScopeUserId, createLogPrefix } from "../../lib/supabase/cloudRepository"
+import {
+  probeSupabaseClient,
+  resolveScopeUserId,
+  createLogPrefix,
+  fetchTableRows,
+  describeCloudSuccess,
+} from "../../lib/supabase/cloudRepository"
 import {
   parseBrandRow,
   parseBrandProductRow,
@@ -20,26 +26,32 @@ function mergeBrandsWithProducts(brandRows, productRows) {
 
 export async function fetchCloudBrands() {
   const probe = await probeSupabaseClient()
-  if (!probe.ok) return { ok: false, error: probe.reason }
+  if (!probe.ok) return { ok: false, error: probe.reason, table: "brands" }
 
   const userId = await resolveScopeUserId()
-  let brandQuery = probe.supabase
-    .from("brands")
-    .select("*")
-    .order("updated_at", { ascending: false, nullsFirst: false })
-  if (userId) brandQuery = brandQuery.eq("user_id", userId)
-
-  const { data: brandRows, error } = await brandQuery
-  if (error) return { ok: false, error: error.message, code: error.code }
+  const { data: brandRows, error } = await fetchTableRows(probe.supabase, {
+    table: "brands",
+    orderBy: "updated_at",
+    fallbackOrderBy: "id",
+    userId,
+    logPrefix: LOG_PREFIX,
+  })
+  if (error) return { ok: false, error: error.message, code: error.code, table: "brands" }
 
   let productQuery = probe.supabase.from("brand_products").select("*")
   if (userId) productQuery = productQuery.eq("user_id", userId)
-  const { data: productRows } = await productQuery
+  const { data: productRows, error: productError } = await productQuery
+  if (productError) {
+    console.warn(
+      `${LOG_PREFIX} brand_products fetch failed (${productError.message}) — brands loaded without products`
+    )
+  }
 
   return {
     ok: true,
     brands: mergeBrandsWithProducts(brandRows ?? [], productRows ?? []),
     authenticated: Boolean(userId),
+    rows: mergeBrandsWithProducts(brandRows ?? [], productRows ?? []),
   }
 }
 
@@ -102,22 +114,30 @@ export async function deleteCloudBrand(brandId) {
 export async function initCloudBrands() {
   const probe = await probeSupabaseClient()
   if (!probe.ok) {
-    console.info(`${LOG_PREFIX} LOCAL — Supabase not configured`)
-    return { ok: false, reason: probe.reason }
+    return { ok: false, reason: probe.reason, table: "brands" }
   }
 
   const { error: tableError } = await probe.supabase.from("brands").select("id").limit(1)
   if (tableError) {
-    console.error(`${LOG_PREFIX} LOCAL — database error:`, tableError.message)
-    return { ok: false, reason: "fetch_failed", error: tableError.message }
+    return {
+      ok: false,
+      reason: "fetch_failed",
+      error: tableError.message,
+      code: tableError.code,
+      table: "brands",
+    }
   }
 
   const result = await fetchCloudBrands()
   if (!result.ok) {
-    console.error(`${LOG_PREFIX} LOCAL — database error:`, result.error)
-    return { ok: false, reason: "fetch_failed", error: result.error }
+    return { ok: false, reason: "fetch_failed", error: result.error, code: result.code, table: "brands" }
   }
 
-  console.info(`${LOG_PREFIX} CLOUD — loaded ${result.brands.length} brand(s)`)
-  return { ok: true, brands: result.brands }
+  return {
+    ok: true,
+    brands: result.brands,
+    rows: result.brands,
+    authenticated: result.authenticated,
+    logMessage: describeCloudSuccess(result),
+  }
 }

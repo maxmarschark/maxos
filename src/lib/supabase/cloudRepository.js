@@ -6,6 +6,40 @@ export function createLogPrefix(moduleName) {
   return `[Max OS ${moduleName}]`
 }
 
+const EXTENSION_TABLES = new Set(["deals", "calendar_events"])
+
+export function describeCloudFailure(result) {
+  const { error, code, reason, table } = result
+  if (reason === "not_configured") {
+    return "Supabase env vars not configured"
+  }
+  if (reason === "client_init_failed") {
+    return "Supabase client could not be created"
+  }
+  if (code === "42P01" || error?.includes("does not exist")) {
+    const sqlHint = EXTENSION_TABLES.has(table)
+      ? "run supabase/schema.sql and supabase/schema-extensions.sql"
+      : "run supabase/schema.sql and supabase/schema-extensions.sql"
+    return `missing table${table ? ` "${table}"` : ""} (${error ?? code}) — ${sqlHint}`
+  }
+  if (code === "42703") {
+    return `column mismatch (${error}) — run supabase/schema-extensions.sql to add missing columns`
+  }
+  if (code === "42501" || code === "PGRST301") {
+    return `RLS policy blocked access (${error ?? code}) — run supabase/schema-extensions.sql or enable auth`
+  }
+  if (reason === "fetch_failed") {
+    return error ?? "database fetch failed"
+  }
+  return error ?? reason ?? "unknown error"
+}
+
+export function describeCloudSuccess(result) {
+  const count = result.rows?.length ?? 0
+  const auth = result.authenticated ? "authenticated session" : "publishable key"
+  return `loaded ${count} row(s) via ${auth}`
+}
+
 export async function resolveScopeUserId() {
   return getSupabaseUserId()
 }
@@ -21,6 +55,40 @@ export async function probeSupabaseClient() {
   return { ok: true, supabase }
 }
 
+/**
+ * Runs a select with optional ordering. Retries without sort when orderBy column is missing.
+ */
+export async function fetchTableRows(supabase, { table, select = "*", orderBy, fallbackOrderBy, userId, logPrefix }) {
+  let query = supabase.from(table).select(select)
+  if (userId) {
+    query = query.eq("user_id", userId)
+  }
+
+  if (!orderBy) {
+    return query
+  }
+
+  const ordered = await query.order(orderBy, { ascending: false, nullsFirst: false })
+  if (!ordered.error) {
+    return ordered
+  }
+
+  if (ordered.error.code === "42703") {
+    console.warn(
+      `${logPrefix} column "${orderBy}" missing on "${table}" — retrying without sort (run supabase/schema-extensions.sql)`
+    )
+    if (fallbackOrderBy && fallbackOrderBy !== orderBy) {
+      const fallback = await query.order(fallbackOrderBy, { ascending: false, nullsFirst: false })
+      if (!fallback.error) {
+        return fallback
+      }
+    }
+    return query
+  }
+
+  return ordered
+}
+
 export function createCloudCrud({
   moduleName,
   table,
@@ -28,41 +96,35 @@ export function createCloudCrud({
   toRow,
   primaryKey = "id",
   orderBy = "updated_at",
+  fallbackOrderBy,
 }) {
   const LOG_PREFIX = createLogPrefix(moduleName)
-
-  async function scopedQuery(select = "*") {
-    const probe = await probeSupabaseClient()
-    if (!probe.ok) return { ok: false, error: probe.reason, supabase: null, query: null, userId: null }
-
-    const userId = await resolveScopeUserId()
-    let query = probe.supabase
-      .from(table)
-      .select(select)
-      .order(orderBy, { ascending: false, nullsFirst: false })
-
-    if (userId) {
-      query = query.eq("user_id", userId)
-    }
-
-    return { ok: true, supabase: probe.supabase, query, userId }
-  }
+  const sortFallback = fallbackOrderBy ?? primaryKey
 
   async function fetchAll() {
-    const scoped = await scopedQuery()
-    if (!scoped.ok) {
-      return { ok: false, error: scoped.error }
+    const probe = await probeSupabaseClient()
+    if (!probe.ok) {
+      return { ok: false, error: probe.reason }
     }
 
-    const { data, error } = await scoped.query
+    const userId = await resolveScopeUserId()
+    const { data, error } = await fetchTableRows(probe.supabase, {
+      table,
+      select: "*",
+      orderBy,
+      fallbackOrderBy: sortFallback,
+      userId,
+      logPrefix: LOG_PREFIX,
+    })
+
     if (error) {
-      return { ok: false, error: error.message, code: error.code }
+      return { ok: false, error: error.message, code: error.code, table }
     }
 
     return {
       ok: true,
       rows: (data ?? []).map(parseRow),
-      authenticated: Boolean(scoped.userId),
+      authenticated: Boolean(userId),
     }
   }
 
@@ -126,26 +188,32 @@ export function createCloudCrud({
   async function init() {
     const probe = await probeSupabaseClient()
     if (!probe.ok) {
-      console.info(`${LOG_PREFIX} LOCAL — Supabase env vars not configured`)
-      return { ok: false, reason: probe.reason }
+      return { ok: false, reason: probe.reason, table }
     }
 
     const probeColumn = primaryKey === "order_id" ? "order_id" : "id"
     const { error: tableError } = await probe.supabase.from(table).select(probeColumn).limit(1)
     if (tableError) {
-      console.error(`${LOG_PREFIX} LOCAL — database error:`, tableError.message)
-      return { ok: false, reason: "fetch_failed", error: tableError.message, code: tableError.code }
+      return {
+        ok: false,
+        reason: "fetch_failed",
+        error: tableError.message,
+        code: tableError.code,
+        table,
+      }
     }
 
     const result = await fetchAll()
     if (!result.ok) {
-      console.error(`${LOG_PREFIX} LOCAL — database error:`, result.error)
-      return { ok: false, reason: "fetch_failed", error: result.error, code: result.code }
+      return { ok: false, reason: "fetch_failed", error: result.error, code: result.code, table }
     }
 
-    const authLabel = result.authenticated ? "authenticated session" : "publishable key"
-    console.info(`${LOG_PREFIX} CLOUD — loaded ${result.rows.length} row(s) via ${authLabel}`)
-    return { ok: true, rows: result.rows }
+    return {
+      ok: true,
+      rows: result.rows,
+      authenticated: result.authenticated,
+      logMessage: describeCloudSuccess(result),
+    }
   }
 
   return { fetchAll, insert, update, remove, init, LOG_PREFIX }

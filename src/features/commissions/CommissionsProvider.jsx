@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { useOrders } from "../orders/useOrders"
 import { COMMISSIONS_STORAGE_KEY, EMPTY_COMMISSION_META } from "./constants"
 import { CommissionsContext } from "./commissions-context"
@@ -22,49 +22,20 @@ function loadCloudApi() {
 export function CommissionsProvider({ children }) {
   const { rawOrders, accounts, brands } = useOrders()
   const [storedMeta, setStoredMeta] = useState(loadStoredMeta)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudCommissions }) => initCloudCommissions()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setStoredMeta(result.commissions)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Commissions] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Commissions] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudCommissions } = await loadCloudApi()
-      const result = await initCloudCommissions()
-      if (cancelled) return
-
-      if (result.ok) {
-        setStoredMeta(result.commissions)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Commissions] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Commissions",
+    initCloud,
+    onCloudLoaded,
+  })
 
   const effectiveMeta = useMemo(() => {
     const orderIds = new Set(rawOrders.map((o) => o.id))

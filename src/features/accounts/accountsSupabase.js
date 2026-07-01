@@ -1,28 +1,32 @@
 import { getSupabaseClient } from "../../lib/supabase/client"
 import { getSupabaseUserId } from "../../lib/supabase/auth"
 import { isSupabaseConfigured } from "../../lib/supabase/env"
+import {
+  createLogPrefix,
+  describeCloudSuccess,
+  fetchTableRows,
+  describeCloudFailure,
+} from "../../lib/supabase/cloudRepository"
 import { parseAccountRow, transformAccount } from "../../lib/supabase/transformers"
 
-const LOG_PREFIX = "[Max OS Accounts]"
+const LOG_PREFIX = createLogPrefix("Accounts")
 
 async function resolveScopeUserId() {
-  const userId = await getSupabaseUserId()
-  return userId
+  return getSupabaseUserId()
 }
 
 async function accountsQuery() {
   const supabase = getSupabaseClient()
-  if (!supabase) return { supabase: null, userId: null }
+  if (!supabase) return { supabase: null, userId: null, query: null }
 
   const userId = await resolveScopeUserId()
-  let query = supabase
-    .from("accounts")
-    .select("*")
-    .order("updated_at", { ascending: false, nullsFirst: false })
-
-  if (userId) {
-    query = query.eq("user_id", userId)
-  }
+  const query = fetchTableRows(supabase, {
+    table: "accounts",
+    orderBy: "updated_at",
+    fallbackOrderBy: "id",
+    userId,
+    logPrefix: LOG_PREFIX,
+  })
 
   return { supabase, userId, query }
 }
@@ -40,12 +44,13 @@ export async function fetchCloudAccounts() {
   const { data, error } = await query
 
   if (error) {
-    return { ok: false, error: error.message, code: error.code }
+    return { ok: false, error: error.message, code: error.code, table: "accounts" }
   }
 
   return {
     ok: true,
     accounts: (data ?? []).map(parseAccountRow),
+    rows: (data ?? []).map(parseAccountRow),
     authenticated: Boolean(userId),
   }
 }
@@ -112,35 +117,26 @@ export async function deleteCloudAccount(accountId) {
 
 export async function initCloudAccounts() {
   if (!isSupabaseConfigured()) {
-    console.info(`${LOG_PREFIX} LOCAL — Supabase env vars not configured`)
-    return { ok: false, reason: "not_configured" }
+    return { ok: false, reason: "not_configured", table: "accounts" }
   }
 
   const supabase = getSupabaseClient()
   if (!supabase) {
-    console.info(`${LOG_PREFIX} LOCAL — Supabase client could not be created`)
-    return { ok: false, reason: "client_init_failed" }
+    return { ok: false, reason: "client_init_failed", table: "accounts" }
   }
 
   const result = await fetchCloudAccounts()
 
   if (!result.ok) {
-    console.error(`${LOG_PREFIX} LOCAL — database error:`, result.error)
-    if (result.code === "42501" || result.code === "PGRST301") {
-      console.error(
-        `${LOG_PREFIX} Hint: enable Anonymous sign-in, set VITE_SUPABASE_EMAIL + VITE_SUPABASE_PASSWORD in .env, or run supabase/accounts-cloud-access.sql`
-      )
-    }
-    if (result.code === "42P01" || result.error?.includes("does not exist")) {
-      console.error(`${LOG_PREFIX} Hint: run supabase/schema.sql in the Supabase SQL editor`)
-    }
-    return { ok: false, reason: "fetch_failed", error: result.error }
+    console.error(`${LOG_PREFIX} LOCAL — ${describeCloudFailure(result)}`)
+    return { ok: false, reason: "fetch_failed", error: result.error, code: result.code, table: "accounts" }
   }
 
-  const authLabel = result.authenticated ? "authenticated session" : "publishable key"
-  console.info(
-    `${LOG_PREFIX} CLOUD — loaded ${result.accounts.length} account(s) via ${authLabel}`
-  )
-
-  return { ok: true, accounts: result.accounts }
+  return {
+    ok: true,
+    accounts: result.accounts,
+    rows: result.accounts,
+    authenticated: result.authenticated,
+    logMessage: describeCloudSuccess(result),
+  }
 }

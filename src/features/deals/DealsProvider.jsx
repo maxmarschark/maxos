@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { DEALS_STORAGE_KEY, EMPTY_DEAL } from "./constants"
 import { DealsContext } from "./deals-context"
 
@@ -15,49 +15,20 @@ function loadCloudApi() {
 
 export function DealsProvider({ children }) {
   const [deals, setDeals] = useState(loadLocalDeals)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudDeals }) => initCloudDeals()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setDeals(result.deals)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Deals] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Deals] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudDeals } = await loadCloudApi()
-      const result = await initCloudDeals()
-      if (cancelled) return
-
-      if (result.ok) {
-        setDeals(result.deals)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Deals] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Deals",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(DEALS_STORAGE_KEY, deals)

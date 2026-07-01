@@ -14,5 +14,7 @@ export const updateCloudContact = (contact) => crud.update(contact).then((r) => 
 export const deleteCloudContact = (id) => crud.remove(id)
 export async function initCloudContacts() {
   const result = await crud.init()
-  return result.ok ? { ok: true, contacts: result.rows } : result
+  return result.ok
+    ? { ok: true, contacts: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

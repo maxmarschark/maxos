@@ -13,5 +13,7 @@ export const updateCloudDeal = (deal) => crud.update(deal).then((r) => (r.ok ? {
 export const deleteCloudDeal = (id) => crud.remove(id)
 export async function initCloudDeals() {
   const result = await crud.init()
-  return result.ok ? { ok: true, deals: result.rows } : result
+  return result.ok
+    ? { ok: true, deals: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

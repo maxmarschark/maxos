@@ -14,5 +14,7 @@ export const updateCloudOrder = (order) => crud.update(order).then((r) => (r.ok 
 export const deleteCloudOrder = (id) => crud.remove(id)
 export async function initCloudOrders() {
   const result = await crud.init()
-  return result.ok ? { ok: true, orders: result.rows } : result
+  return result.ok
+    ? { ok: true, orders: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

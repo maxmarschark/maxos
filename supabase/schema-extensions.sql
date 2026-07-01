@@ -165,6 +165,19 @@ create index if not exists commissions_user_id_idx on public.commissions (user_i
 create index if not exists tasks_user_id_idx on public.tasks (user_id);
 create index if not exists activity_events_user_id_idx on public.activity_events (user_id);
 
+-- Ensure timestamp columns on partial/legacy schemas (idempotent)
+alter table public.brands add column if not exists created_at timestamptz;
+alter table public.brands add column if not exists updated_at timestamptz;
+alter table public.brand_products add column if not exists created_at timestamptz;
+alter table public.brand_products add column if not exists updated_at timestamptz;
+alter table public.contacts add column if not exists created_at timestamptz;
+alter table public.contacts add column if not exists updated_at timestamptz;
+alter table public.orders add column if not exists created_at timestamptz;
+alter table public.orders add column if not exists updated_at timestamptz;
+alter table public.tasks add column if not exists created_at timestamptz;
+alter table public.tasks add column if not exists updated_at timestamptz;
+alter table public.tasks add column if not exists completed_at timestamptz;
+
 -- Enable RLS on core tables (no-op if already enabled)
 alter table public.accounts enable row level security;
 alter table public.brands enable row level security;
@@ -233,6 +246,11 @@ create index if not exists calendar_events_user_id_idx on public.calendar_events
 create index if not exists calendar_events_event_date_idx on public.calendar_events (event_date);
 create index if not exists calendar_events_account_id_idx on public.calendar_events (account_id);
 create index if not exists calendar_events_contact_id_idx on public.calendar_events (contact_id);
+
+alter table public.deals add column if not exists created_at timestamptz;
+alter table public.deals add column if not exists updated_at timestamptz;
+alter table public.calendar_events add column if not exists created_at timestamptz;
+alter table public.calendar_events add column if not exists updated_at timestamptz;
 
 -- Extension RLS + policies
 alter table public.deals enable row level security;

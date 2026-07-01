@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { BRANDS_STORAGE_KEY, EMPTY_BRAND, EMPTY_PRODUCT } from "./constants"
 import { SEED_BRANDS } from "./seed"
 import { BrandsContext } from "./brands-context"
@@ -16,49 +16,20 @@ function loadCloudApi() {
 
 export function BrandsProvider({ children }) {
   const [brands, setBrands] = useState(loadLocalBrands)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudBrands }) => initCloudBrands()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setBrands(result.brands)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Brands] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Brands] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudBrands } = await loadCloudApi()
-      const result = await initCloudBrands()
-      if (cancelled) return
-
-      if (result.ok) {
-        setBrands(result.brands)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Brands] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Brands",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(BRANDS_STORAGE_KEY, brands)

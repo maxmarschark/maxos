@@ -16,5 +16,7 @@ export const updateCloudCalendarEvent = (event) =>
 export const deleteCloudCalendarEvent = (id) => crud.remove(id)
 export async function initCloudCalendar() {
   const result = await crud.init()
-  return result.ok ? { ok: true, events: result.rows } : result
+  return result.ok
+    ? { ok: true, events: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

@@ -14,5 +14,7 @@ export const insertCloudActivityEvent = (event) =>
   crud.insert(event).then((r) => (r.ok ? { ok: true, event: r.row } : r))
 export async function initCloudActivity() {
   const result = await crud.init()
-  return result.ok ? { ok: true, events: result.rows } : result
+  return result.ok
+    ? { ok: true, events: result.rows, rows: result.rows, logMessage: result.logMessage }
+    : result
 }

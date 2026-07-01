@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
-import { isSupabaseConfigured } from "../../lib/supabase/env"
+import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import { useContacts } from "../contacts/useContacts"
@@ -40,49 +40,20 @@ export function TasksProvider({ children }) {
   const { brands } = useBrands()
 
   const [tasks, setTasks] = useState(loadInitialTasks)
-  const [storageMode, setStorageMode] = useState("local")
-  const storageModeRef = useRef("local")
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
+  const initCloud = useCallback(
+    () => loadCloudApi().then(({ initCloudTasks }) => initCloudTasks()),
+    []
+  )
+  const onCloudLoaded = useCallback((result) => {
+    setTasks(result.tasks)
   }, [])
 
-  const fallBackToLocal = useCallback(() => {
-    console.warn("[Max OS Tasks] LOCAL — falling back to localStorage")
-    setMode("local")
-  }, [setMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      if (!isSupabaseConfigured()) {
-        console.info("[Max OS Tasks] LOCAL — Supabase env vars not configured")
-        return
-      }
-
-      const { initCloudTasks } = await loadCloudApi()
-      const result = await initCloudTasks()
-      if (cancelled) return
-
-      if (result.ok) {
-        setTasks(result.tasks)
-        setMode("cloud")
-        return
-      }
-
-      console.info(
-        "[Max OS Tasks] LOCAL — using localStorage fallback",
-        result.reason ? `(${result.reason})` : ""
-      )
-    }
-
-    bootstrap()
-    return () => {
-      cancelled = true
-    }
-  }, [setMode])
+  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+    moduleName: "Tasks",
+    initCloud,
+    onCloudLoaded,
+  })
 
   useEffect(() => {
     saveToStorage(TASKS_STORAGE_KEY, tasks)
