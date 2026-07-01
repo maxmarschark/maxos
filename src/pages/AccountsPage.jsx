@@ -11,6 +11,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { Badge } from "../components/ui/Badge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -48,7 +49,7 @@ const SORT_FIELD_TYPES = {
 export function AccountsPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { accounts, addAccount, updateAccount, deleteAccount } = useAccounts()
+  const { accounts, storageMode, addAccount, updateAccount, deleteAccount } = useAccounts()
 
   const [search, setSearch] = useState("")
   const [stateFilter, setStateFilter] = useState("")
@@ -102,6 +103,14 @@ export function AccountsPage() {
         icon={Building2}
         title="Accounts"
         description={`${accounts.length} retailer${accounts.length !== 1 ? "s" : ""} and distributor${accounts.length !== 1 ? "s" : ""}`}
+        badge={
+          <Badge
+            variant={storageMode === "cloud" ? "success" : "default"}
+            className="normal-case tracking-normal"
+          >
+            {storageMode === "cloud" ? "CLOUD" : "LOCAL"}
+          </Badge>
+        }
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
             Add Account

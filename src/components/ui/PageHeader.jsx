@@ -1,6 +1,6 @@
 import { cn } from "../../lib/cn"
 
-export function PageHeader({ icon: Icon, title, description, actions, className }) {
+export function PageHeader({ icon: Icon, title, description, actions, badge, className }) {
   return (
     <div
       className={cn(
@@ -15,9 +15,12 @@ export function PageHeader({ icon: Icon, title, description, actions, className 
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-            {title}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
+              {title}
+            </h1>
+            {badge}
+          </div>
           {description && (
             <p className="mt-1 text-sm text-zinc-500">{description}</p>
           )}

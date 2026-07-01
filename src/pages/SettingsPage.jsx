@@ -1,9 +1,11 @@
 import { useRef, useState } from "react"
-import { Settings, Download, Upload, FileSpreadsheet, AlertTriangle, Info } from "lucide-react"
+import { Settings, Download, Upload, FileSpreadsheet, AlertTriangle, Info, Cloud } from "lucide-react"
 import { PageHeader } from "../components/ui/PageHeader"
 import { Card, CardHeader } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
+import { Badge } from "../components/ui/Badge"
 import { useToast } from "../components/ui/useToast"
+import { getSupabaseEnvStatus } from "../lib/supabase/env"
 import {
   APP_VERSION,
   estimateStorageUsageBytes,
@@ -62,6 +64,7 @@ export function SettingsPage() {
   const lastBackup = getLastBackupDate()
   const storageBytes = estimateStorageUsageBytes()
   const currentData = loadAllAppData()
+  const supabaseStatus = getSupabaseEnvStatus()
 
   function handleExportBackup() {
     exportBackup()
@@ -137,6 +140,45 @@ export function SettingsPage() {
         title="Settings"
         description="Backup, restore, and manage your local Max OS data"
       />
+
+      <SettingsSection
+        title="Cloud Sync (Supabase)"
+        description="Environment configuration for future cloud persistence. Data still saves to localStorage."
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <Cloud size={16} className="mt-0.5 shrink-0 text-zinc-500" />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={supabaseStatus.configured ? "success" : "default"}
+                  className="normal-case tracking-normal"
+                >
+                  {supabaseStatus.configured
+                    ? "Supabase configured"
+                    : "Supabase not configured"}
+                </Badge>
+              </div>
+              {supabaseStatus.configured ? (
+                <p className="mt-1.5 text-sm text-zinc-500">
+                  Connected to {supabaseStatus.urlHost}. Publishable key is set.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-sm text-zinc-500">
+                  Add <code className="text-zinc-400">VITE_SUPABASE_URL</code> and{" "}
+                  <code className="text-zinc-400">VITE_SUPABASE_ANON_KEY</code> to{" "}
+                  <code className="text-zinc-400">.env</code>, then restart the dev server.
+                  {!supabaseStatus.hasUrl && !supabaseStatus.hasAnonKey
+                    ? " Both are missing."
+                    : !supabaseStatus.hasUrl
+                      ? " URL is missing."
+                      : " Publishable key is missing."}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </SettingsSection>
 
       <SettingsSection
         title="Data Backup"
