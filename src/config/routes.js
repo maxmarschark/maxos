@@ -6,6 +6,7 @@ import {
   Package,
   Handshake,
   CalendarDays,
+  CheckSquare,
   DollarSign,
   BarChart3,
   Settings,
@@ -46,6 +47,13 @@ export const routes = [
     name: "Orders",
     icon: Package,
     description: "Purchase orders and fulfillment",
+  },
+  {
+    path: "/tasks",
+    id: "tasks",
+    name: "Tasks",
+    icon: CheckSquare,
+    description: "Follow-ups, calls, and daily action items",
   },
   {
     path: "/deals",

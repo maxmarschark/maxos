@@ -15,13 +15,15 @@ const priorityVariants = {
   2: "warning",
   3: "primary",
   4: "default",
+  5: "default",
 }
 
 const priorityLabels = {
-  1: "Collections",
-  2: "Follow-ups",
-  3: "Orders",
-  4: "Tasks",
+  1: "Urgent",
+  2: "Collections",
+  3: "Follow-ups",
+  4: "Orders",
+  5: "Admin",
 }
 
 function formatGeneratedTime(date) {

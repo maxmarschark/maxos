@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useMemo, useState } from "react"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
+import { useNavigate, useParams } from "react-router-dom"
 import { useAccounts } from "../features/accounts/useAccounts"
 import { AccountFormModal } from "../features/accounts/components/AccountFormModal"
 import { DeleteAccountModal } from "../features/accounts/components/DeleteAccountModal"
@@ -15,6 +15,10 @@ import { useContacts } from "../features/contacts/useContacts"
 import { AccountOrdersTab } from "../features/orders/components/AccountOrdersTab"
 import { NotesTab } from "../features/accounts/components/tabs/NotesTab"
 import { TasksTab } from "../features/accounts/components/tabs/TasksTab"
+import { useTasks } from "../features/tasks/useTasks"
+import { loadFromStorage } from "../lib/storage"
+import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
+import { SEED_BRANDS } from "../features/brands/seed"
 
 export function AccountProfilePage() {
   const { id } = useParams()
@@ -25,12 +29,12 @@ export function AccountProfilePage() {
     deleteAccount,
     addNote,
     deleteNote,
-    addTask,
-    toggleTask,
-    deleteTask,
+    accounts,
   } = useAccounts()
-  const { getOrdersByAccount } = useOrders()
-  const { getContactsByAccount } = useContacts()
+  const { getOrdersByAccount, orders } = useOrders()
+  const { getContactsByAccount, contacts } = useContacts()
+  const { getTasksByAccount } = useTasks()
+  const brands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
 
   const account = getAccount(id)
   const [activeTab, setActiveTab] = useState("overview")
@@ -61,7 +65,7 @@ export function AccountProfilePage() {
     { id: "contacts", label: "Contacts", count: getContactsByAccount(account.id).length },
     { id: "orders", label: "Orders", count: getOrdersByAccount(account.id).length },
     { id: "notes", label: "Notes", count: account.notes.length },
-    { id: "tasks", label: "Tasks", count: account.tasks.filter((t) => !t.done).length },
+    { id: "tasks", label: "Tasks", count: getTasksByAccount(account.id).filter((t) => t.status !== "Complete").length },
   ]
 
   function handleDelete() {
@@ -142,9 +146,10 @@ export function AccountProfilePage() {
         {activeTab === "tasks" && (
           <TasksTab
             account={account}
-            onAddTask={(title, dueDate) => addTask(account.id, title, dueDate)}
-            onToggleTask={(taskId) => toggleTask(account.id, taskId)}
-            onDeleteTask={(taskId) => deleteTask(account.id, taskId)}
+            accounts={accounts}
+            contacts={contacts}
+            brands={brands}
+            orders={orders}
           />
         )}
       </div>

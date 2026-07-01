@@ -3,6 +3,8 @@ import { useOrders } from "../orders/useOrders"
 import { useCommissions } from "../commissions/useCommissions"
 import { useContacts } from "../contacts/useContacts"
 import { useAccounts } from "../accounts/useAccounts"
+import { useTasks } from "../tasks/useTasks"
+import { flattenTasksForToday } from "../tasks/utils"
 import {
   buildActivityFeed,
   buildCollectionsDue,
@@ -22,6 +24,7 @@ export function useTodayDashboard() {
   const { commissions } = useCommissions()
   const { contacts } = useContacts()
   const { accounts } = useAccounts()
+  const { tasks } = useTasks()
 
   const todayISO = getTodayISO()
 
@@ -29,6 +32,7 @@ export function useTodayDashboard() {
     const collections = buildCollectionsDue(orders, todayISO)
     const followUps = buildContactFollowUps(contacts, todayISO)
     const followUpsFlat = flattenFollowUps(followUps)
+    const tasksDueFlat = flattenTasksForToday(tasks, todayISO)
     const ordersAttention = buildOrdersAttention(orders)
     const ordersAttentionFlat = flattenOrdersAttention(ordersAttention)
     const commissionSnapshot = buildCommissionSnapshot(commissions, todayISO)
@@ -38,20 +42,22 @@ export function useTodayDashboard() {
       commissionSnapshot,
       orders,
       followUpsFlat,
+      tasksDueFlat,
     })
 
     return {
       todayISO,
       greeting: getGreeting(),
-      subtitle: formatTodaySubtitle(0),
+      subtitle: formatTodaySubtitle(tasksDueFlat.length),
       collections,
       followUps,
       followUpsFlat,
+      tasksDueFlat,
       ordersAttention,
       ordersAttentionFlat,
       commissionSnapshot,
       topMetrics,
       activity,
     }
-  }, [orders, commissions, contacts, accounts, todayISO])
+  }, [orders, commissions, contacts, accounts, tasks, todayISO])
 }

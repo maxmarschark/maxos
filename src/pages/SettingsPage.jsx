@@ -10,7 +10,6 @@ import {
   formatBytes,
   getLastBackupDate,
   loadAllAppData,
-  countAccountTasks,
 } from "../lib/maxOsStorage"
 import {
   exportBackup,
@@ -63,7 +62,6 @@ export function SettingsPage() {
   const lastBackup = getLastBackupDate()
   const storageBytes = estimateStorageUsageBytes()
   const currentData = loadAllAppData()
-  const taskCount = countAccountTasks(currentData.accounts)
 
   function handleExportBackup() {
     exportBackup()
@@ -244,7 +242,7 @@ export function SettingsPage() {
             <p className="text-xs text-zinc-500">Current records</p>
             <p className="text-sm font-medium text-zinc-200">
               {currentData.accounts.length} accounts · {currentData.contacts.length} contacts ·{" "}
-              {currentData.orders.length} orders · {taskCount} tasks
+              {currentData.orders.length} orders · {currentData.tasks?.length ?? 0} tasks
             </p>
           </div>
         </div>

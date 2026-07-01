@@ -54,7 +54,7 @@ export function RestoreBackupModal({ open, onClose, onConfirm, preview, errors =
             <PreviewRow label="Brands" value={preview.brands} />
             <PreviewRow label="Orders" value={preview.orders} />
             <PreviewRow label="Commissions" value={preview.commissions} />
-            <PreviewRow label="Account tasks (in backup)" value={preview.tasks} />
+            <PreviewRow label="Tasks" value={preview.tasks} />
             {preview.importBatches > 0 && (
               <PreviewRow label="Import batches" value={preview.importBatches} />
             )}

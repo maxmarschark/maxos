@@ -4,6 +4,7 @@ import { useOrders } from "../orders/useOrders"
 import { useCommissions } from "../commissions/useCommissions"
 import { useContacts } from "../contacts/useContacts"
 import { useAccounts } from "../accounts/useAccounts"
+import { useTasks } from "../tasks/useTasks"
 import { buildMyDay } from "./buildDay"
 import { applyFallbackActions } from "./fallbackActions"
 import { getTodayISO } from "./utils"
@@ -17,6 +18,7 @@ export function TodayBuildProvider({ children }) {
   const { commissions } = useCommissions()
   const { contacts } = useContacts()
   const { accounts } = useAccounts()
+  const { tasks } = useTasks()
 
   const [plan, setPlan] = useState([])
   const [generatedAt, setGeneratedAt] = useState(null)
@@ -35,6 +37,7 @@ export function TodayBuildProvider({ children }) {
       contacts,
       accounts,
       commissions,
+      tasks,
       todayISO: getTodayISO(),
     })
     const withFallbacks = applyFallbackActions(raw)
@@ -47,7 +50,7 @@ export function TodayBuildProvider({ children }) {
     if (window.location.pathname !== "/") {
       navigate("/")
     }
-  }, [orders, contacts, accounts, commissions, navigate])
+  }, [orders, contacts, accounts, commissions, tasks, navigate])
 
   const value = {
     plan,

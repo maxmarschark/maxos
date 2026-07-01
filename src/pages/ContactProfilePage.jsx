@@ -1,14 +1,23 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useContacts } from "../features/contacts/useContacts"
+import { useOrders } from "../features/orders/useOrders"
+import { useTasks } from "../features/tasks/useTasks"
 import { ContactFormModal } from "../features/contacts/components/ContactFormModal"
 import { DeleteContactModal } from "../features/contacts/components/DeleteContactModal"
+import { CreateFollowUpButton } from "../features/tasks/components/CreateFollowUpButton"
+import { buildFollowUpFromContact } from "../features/tasks/utils"
+import { getTodayISO } from "../features/today/utils"
 import { Button } from "../components/ui/Button"
 import { Badge } from "../components/ui/Badge"
 import { Card } from "../components/ui/Card"
 import { formatDate } from "../lib/format"
 import { TYPE_VARIANTS } from "../features/contacts/constants"
+import { loadFromStorage } from "../lib/storage"
+import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
+import { SEED_BRANDS } from "../features/brands/seed"
+import { useToast } from "../components/ui/useToast"
 
 function DetailRow({ label, children }) {
   return (
@@ -24,6 +33,10 @@ export function ContactProfilePage() {
   const navigate = useNavigate()
   const { getContact, updateContact, deleteContact, accounts, brands, refreshReferences } =
     useContacts()
+  const { orders } = useOrders()
+  const { addTask } = useTasks()
+  const { toast } = useToast()
+  const allBrands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
 
   const contact = getContact(id)
   const [editOpen, setEditOpen] = useState(false)
@@ -134,7 +147,7 @@ export function ContactProfilePage() {
               <span
                 className={
                   contact.nextFollowUpDate &&
-                  new Date(contact.nextFollowUpDate) <= new Date("2025-06-30")
+                  contact.nextFollowUpDate < getTodayISO()
                     ? "text-amber-400"
                     : undefined
                 }
@@ -143,6 +156,18 @@ export function ContactProfilePage() {
               </span>
             </DetailRow>
           </dl>
+          <CreateFollowUpButton
+            label="Create Follow-up Task"
+            initialValues={buildFollowUpFromContact(contact, getTodayISO())}
+            accounts={accounts}
+            contacts={[contact]}
+            brands={allBrands}
+            orders={orders}
+            onCreate={(data) => {
+              addTask(data)
+              toast(`Follow-up task created for ${contact.fullName}`)
+            }}
+          />
         </Card>
 
         <Card padding="md" className="space-y-4">

@@ -38,6 +38,7 @@ const DATA_FIELDS = [
   "orders",
   "commissions",
   "importBatches",
+  "tasks",
 ]
 
 export function validateBackup(raw) {
@@ -76,6 +77,7 @@ export function getBackupPreview(raw) {
   const orders = Array.isArray(data.orders) ? data.orders : []
   const commissions = Array.isArray(data.commissions) ? data.commissions : []
   const importBatches = Array.isArray(data.importBatches) ? data.importBatches : []
+  const tasks = Array.isArray(data.tasks) ? data.tasks : []
 
   return {
     accounts: accounts.length,
@@ -84,7 +86,9 @@ export function getBackupPreview(raw) {
     orders: orders.length,
     commissions: commissions.length,
     importBatches: importBatches.length,
-    tasks: countAccountTasks(accounts),
+    tasks: tasks.length,
+    tasksOpen: tasks.filter((t) => t.status !== "Complete").length,
+    nestedAccountTasks: countAccountTasks(accounts),
     exportedAt: raw?.exportedAt ?? null,
     appVersion: raw?.appVersion ?? null,
   }
@@ -104,6 +108,7 @@ export function restoreBackup(raw) {
   saveToStorage(MAX_OS_DATA_KEYS.orders, data.orders ?? [])
   saveToStorage(MAX_OS_DATA_KEYS.commissions, data.commissions ?? [])
   saveToStorage(MAX_OS_DATA_KEYS.importBatches, data.importBatches ?? [])
+  saveToStorage(MAX_OS_DATA_KEYS.tasks, data.tasks ?? [])
 
   setLastBackupDate(new Date().toISOString())
 }

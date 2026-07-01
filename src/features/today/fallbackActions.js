@@ -1,10 +1,10 @@
 export const FALLBACK_ACTIONS = [
   {
-    priority: 3,
+    priority: 4,
     sort: 0,
-    label: "Review open orders",
-    detail: "Check drafts and pending shipments",
-    link: "/orders",
+    label: "Review open tasks",
+    detail: "Check overdue and due-today items",
+    link: "/tasks",
   },
   {
     priority: 2,

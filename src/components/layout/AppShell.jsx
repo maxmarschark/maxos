@@ -12,6 +12,7 @@ import { OrdersProvider } from "../../features/orders/OrdersProvider"
 import { ContactsProvider } from "../../features/contacts/ContactsProvider"
 import { CommissionsProvider } from "../../features/commissions/CommissionsProvider"
 import { TodayBuildProvider } from "../../features/today/TodayBuildProvider"
+import { TasksProvider } from "../../features/tasks/TasksProvider"
 import { useTodayBuild } from "../../features/today/useTodayBuild"
 
 function AppShellContent() {
@@ -68,9 +69,11 @@ export function AppShell() {
         <OrdersProvider>
           <ContactsProvider>
             <CommissionsProvider>
-              <TodayBuildProvider>
-                <AppShellContent />
-              </TodayBuildProvider>
+              <TasksProvider>
+                <TodayBuildProvider>
+                  <AppShellContent />
+                </TodayBuildProvider>
+              </TasksProvider>
             </CommissionsProvider>
           </ContactsProvider>
         </OrdersProvider>

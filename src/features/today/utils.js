@@ -238,11 +238,12 @@ export function flattenOrdersAttention(ordersAttention) {
   ]
 }
 
-export function buildTopMetrics({ collections, commissionSnapshot, orders, followUpsFlat }) {
+export function buildTopMetrics({ collections, commissionSnapshot, orders, followUpsFlat, tasksDueFlat = [] }) {
   const open = orders.filter((o) => !["Cancelled", "Delivered"].includes(o.orderStatus))
   const inTransit = open.filter((o) => o.orderStatus === "Shipped")
   const collectionsTotal = collections.reduce((s, c) => s + c.amountDue, 0)
   const overdueFollowUps = followUpsFlat.filter((f) => f.overdue).length
+  const overdueTasks = tasksDueFlat.filter((t) => t.overdue).length
 
   return {
     collections: {
@@ -258,8 +259,8 @@ export function buildTopMetrics({ collections, commissionSnapshot, orders, follo
       inTransit: inTransit.length,
     },
     followUpsDue: {
-      count: followUpsFlat.length,
-      overdue: overdueFollowUps,
+      count: followUpsFlat.length + tasksDueFlat.length,
+      overdue: overdueFollowUps + overdueTasks,
     },
   }
 }

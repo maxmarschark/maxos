@@ -15,6 +15,7 @@ import { ContactsPage } from "../pages/ContactsPage"
 import { ContactProfilePage } from "../pages/ContactProfilePage"
 import { CommissionsPage } from "../pages/CommissionsPage"
 import { SettingsPage } from "../pages/SettingsPage"
+import { TasksPage } from "../pages/TasksPage"
 import { DealsPage, CalendarPage, ReportsPage } from "../pages/modules"
 
 export const router = createBrowserRouter([
@@ -71,6 +72,11 @@ export const router = createBrowserRouter([
           { index: true, element: <OrdersPage /> },
           { path: ":id", element: <OrderDetailPage /> },
         ],
+      },
+      {
+        path: "tasks",
+        element: <TasksPage />,
+        handle: { title: "Tasks", description: "Follow-ups, calls, and daily action items" },
       },
       {
         path: "deals",

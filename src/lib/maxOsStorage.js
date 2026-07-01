@@ -3,6 +3,7 @@ import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
 import { CONTACTS_STORAGE_KEY, IMPORT_BATCHES_STORAGE_KEY } from "../features/contacts/constants"
 import { ORDERS_STORAGE_KEY } from "../features/orders/constants"
 import { COMMISSIONS_STORAGE_KEY } from "../features/commissions/constants"
+import { TASKS_STORAGE_KEY } from "../features/tasks/constants"
 import { loadFromStorage, saveToStorage } from "./storage"
 
 export const APP_VERSION = "Max OS Local MVP v0.1.0"
@@ -17,6 +18,7 @@ export const MAX_OS_DATA_KEYS = {
   orders: ORDERS_STORAGE_KEY,
   commissions: COMMISSIONS_STORAGE_KEY,
   importBatches: IMPORT_BATCHES_STORAGE_KEY,
+  tasks: TASKS_STORAGE_KEY,
 }
 
 export const ALL_DATA_STORAGE_KEYS = Object.values(MAX_OS_DATA_KEYS)
@@ -29,6 +31,7 @@ export function loadAllAppData() {
     orders: loadFromStorage(MAX_OS_DATA_KEYS.orders, []),
     commissions: loadFromStorage(MAX_OS_DATA_KEYS.commissions, []),
     importBatches: loadFromStorage(MAX_OS_DATA_KEYS.importBatches, []),
+    tasks: loadFromStorage(MAX_OS_DATA_KEYS.tasks, []),
   }
 }
 
@@ -59,6 +62,9 @@ export function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
-export function countAccountTasks(accounts) {
+export function countAccountTasks(accounts, tasks = []) {
+  if (tasks.length > 0) {
+    return tasks.filter((t) => t.status !== "Complete").length
+  }
   return accounts.reduce((sum, a) => sum + (a.tasks?.length ?? 0), 0)
 }
