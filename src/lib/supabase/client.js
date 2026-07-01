@@ -19,7 +19,9 @@ export function getSupabaseClient() {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        // HashRouter owns the URL hash; OAuth PKCE is handled in bootstrapAuthSession.
+        detectSessionInUrl: false,
+        flowType: "pkce",
       },
     })
   }

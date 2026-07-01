@@ -1,12 +1,15 @@
 export { getSupabaseConfig, getSupabaseEnvStatus, isSupabaseConfigured } from "./env"
+export { getAppRedirectUrl, getSettingsOAuthRedirectUrl, SETTINGS_OAUTH_HASH_PATH, SETTINGS_OAUTH_PATH } from "./oauthRedirect"
 export { getSupabaseClient, resetSupabaseClient } from "./client"
 export {
+  bootstrapAuthSession,
   getAuthUser,
   ensureSupabaseSession,
   getSupabaseUserId,
   signInWithGoogle,
   connectGoogleCalendar,
   getGoogleAccessToken,
+  resolveGoogleCalendarStatus,
   signOut,
   getUserDisplayName,
   getUserEmail,

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isSupabaseConfigured } from "../../lib/supabase/env"
 import { getSupabaseClient } from "../../lib/supabase/client"
-import { signInWithGoogle as googleSignIn, signOut as supabaseSignOut } from "../../lib/supabase/auth"
+import {
+  bootstrapAuthSession,
+  signInWithGoogle as googleSignIn,
+  signOut as supabaseSignOut,
+} from "../../lib/supabase/auth"
 import { AuthContext } from "./auth-context"
 
 export function AuthProvider({ children }) {
@@ -22,11 +26,15 @@ export function AuthProvider({ children }) {
     let cancelled = false
 
     async function initAuth() {
-      const { data: { session: initialSession } } = await supabase.auth.getSession()
-      if (!cancelled) {
-        setSession(initialSession)
-        setLoading(false)
+      const { session: initialSession, error } = await bootstrapAuthSession()
+      if (cancelled) return
+
+      if (error) {
+        console.warn("[Max OS Auth] OAuth bootstrap failed:", error)
       }
+
+      setSession(initialSession)
+      setLoading(false)
     }
 
     void initAuth()

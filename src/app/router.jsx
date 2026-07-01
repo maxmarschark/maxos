@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom"
+import { createHashRouter } from "react-router-dom"
 import { AppShell } from "../components/layout/AppShell"
 import { TodayPage } from "../pages/TodayPage"
 import { AccountsLayout } from "../features/accounts/AccountsLayout"
@@ -19,7 +19,7 @@ import { TasksPage } from "../pages/TasksPage"
 import { DealsPage, ReportsPage } from "../pages/modules"
 import { CalendarPage } from "../pages/CalendarPage"
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     element: <AppShell />,

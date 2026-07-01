@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { fetchGoogleCalendarEvents, getCalendarWindow } from "../../lib/google/calendarApi"
-import { getGoogleAccessToken, connectGoogleCalendar as requestCalendarAccess } from "../../lib/supabase/auth"
+import {
+  connectGoogleCalendar as requestCalendarAccess,
+  getGoogleAccessToken,
+  resolveGoogleCalendarStatus,
+} from "../../lib/supabase/auth"
 import { useAuth } from "../auth/useAuth"
 import {
   GOOGLE_CALENDAR_OPT_IN_KEY,
@@ -34,6 +38,16 @@ export function GoogleCalendarProvider({ children }) {
   const [lastFetchedAt, setLastFetchedAt] = useState(null)
   const [error, setError] = useState(null)
 
+  const syncStatus = useCallback(async () => {
+    if (!configured || !user) {
+      setStatus(GOOGLE_CALENDAR_STATUS.NOT_CONNECTED)
+      return
+    }
+
+    const resolved = await resolveGoogleCalendarStatus({ optIn })
+    setStatus(resolved.status)
+  }, [configured, user, optIn])
+
   const refreshEvents = useCallback(async () => {
     if (!configured || !user) {
       setStatus(GOOGLE_CALENDAR_STATUS.NOT_CONNECTED)
@@ -44,16 +58,19 @@ export function GoogleCalendarProvider({ children }) {
     setLoading(true)
     setError(null)
 
-    const token = await getGoogleAccessToken()
-    if (!token) {
+    const resolved = await resolveGoogleCalendarStatus({ optIn })
+    setStatus(resolved.status)
+
+    if (resolved.status !== GOOGLE_CALENDAR_STATUS.CONNECTED) {
       setLoading(false)
       setGoogleEvents([])
-      setStatus(
-        optIn ? GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED : GOOGLE_CALENDAR_STATUS.NOT_CONNECTED
-      )
+      if (resolved.status === GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED) {
+        return { ok: false, reason: "permission_needed" }
+      }
       return { ok: false, reason: "no_token" }
     }
 
+    const token = await getGoogleAccessToken()
     const window = getCalendarWindow(UPCOMING_DAYS)
     const result = await fetchGoogleCalendarEvents(token, window)
 
@@ -101,7 +118,7 @@ export function GoogleCalendarProvider({ children }) {
       if (optIn) {
         await refreshEvents()
       } else if (!cancelled) {
-        setStatus(GOOGLE_CALENDAR_STATUS.NOT_CONNECTED)
+        await syncStatus()
       }
     }
 
@@ -109,7 +126,7 @@ export function GoogleCalendarProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [configured, user, optIn, refreshEvents])
+  }, [configured, user, optIn, refreshEvents, syncStatus])
 
   const value = useMemo(
     () => ({

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { Settings, Download, Upload, FileSpreadsheet, AlertTriangle, Info, Cloud, Calendar, RefreshCw } from "lucide-react"
+import { Settings, Download, Upload, FileSpreadsheet, AlertTriangle, Info, Cloud } from "lucide-react"
 import { PageHeader } from "../components/ui/PageHeader"
 import { Card, CardHeader } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
@@ -8,8 +8,7 @@ import { useToast } from "../components/ui/useToast"
 import { useAuth } from "../features/auth/useAuth"
 import { useAccounts } from "../features/accounts/useAccounts"
 import { useCloudSync } from "../features/cloud/useCloudSync"
-import { useGoogleCalendar } from "../features/google-calendar/useGoogleCalendar"
-import { GOOGLE_CALENDAR_STATUS } from "../features/google-calendar/constants"
+import { GoogleCalendarSettingsSection } from "../features/settings/components/GoogleCalendarSettingsSection"
 import {
   APP_VERSION,
   estimateStorageUsageBytes,
@@ -70,25 +69,11 @@ function formatConnectedUser(user) {
   return user.email ?? user.id ?? "—"
 }
 
-const googleCalendarStatusLabels = {
-  [GOOGLE_CALENDAR_STATUS.CONNECTED]: "Connected",
-  [GOOGLE_CALENDAR_STATUS.NOT_CONNECTED]: "Not connected",
-  [GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED]: "Permission needed",
-}
-
 export function SettingsPage() {
   const { toast } = useToast()
   const { user, configured: authConfigured } = useAuth()
   const { storageMode } = useAccounts()
   const { connected, lastSync, projectName, connectedUser, checking } = useCloudSync()
-  const {
-    status: googleCalendarStatus,
-    loading: googleCalendarLoading,
-    lastFetchedAt,
-    connect: connectGoogleCalendar,
-    refreshEvents,
-    error: googleCalendarError,
-  } = useGoogleCalendar()
   const fileInputRef = useRef(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
@@ -167,24 +152,6 @@ export function SettingsPage() {
     setRestoreErrors([])
   }
 
-  async function handleConnectGoogleCalendar() {
-    const result = await connectGoogleCalendar()
-    if (!result.ok) {
-      toast(result.error ?? "Could not connect Google Calendar", "error")
-    }
-  }
-
-  async function handleRefreshGoogleCalendar() {
-    const result = await refreshEvents()
-    if (result.ok) {
-      toast("Google Calendar refreshed")
-    } else if (result.reason === "permission_needed") {
-      toast("Google Calendar permission required — click Connect", "error")
-    } else {
-      toast(googleCalendarError ?? "Could not refresh Google Calendar", "error")
-    }
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -237,76 +204,7 @@ export function SettingsPage() {
         </div>
       </SettingsSection>
 
-      <SettingsSection
-        title="Google Calendar"
-        description="Sync upcoming events from your Google Calendar into Max OS."
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-2">
-            <Calendar size={16} className="mt-0.5 shrink-0 text-zinc-500" />
-            <div className="grid w-full gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
-                <p className="text-xs text-zinc-500">Status</p>
-                <p className="text-sm font-medium text-zinc-200">
-                  {googleCalendarStatusLabels[googleCalendarStatus] ?? googleCalendarStatus}
-                </p>
-              </div>
-              <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
-                <p className="text-xs text-zinc-500">Last fetched</p>
-                <p className="text-sm font-medium text-zinc-200">{formatSyncDate(lastFetchedAt)}</p>
-              </div>
-            </div>
-          </div>
-
-          {!authConfigured && (
-            <p className="text-sm text-zinc-500">
-              Sign in with Google (Supabase configured) to connect your calendar.
-            </p>
-          )}
-
-          {authConfigured && (
-            <div className="flex flex-wrap gap-2">
-              {googleCalendarStatus !== GOOGLE_CALENDAR_STATUS.CONNECTED && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={Calendar}
-                  onClick={handleConnectGoogleCalendar}
-                  disabled={googleCalendarLoading}
-                >
-                  Connect Google Calendar
-                </Button>
-              )}
-              {googleCalendarStatus === GOOGLE_CALENDAR_STATUS.CONNECTED && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={RefreshCw}
-                  onClick={handleRefreshGoogleCalendar}
-                  loading={googleCalendarLoading}
-                >
-                  Refresh events
-                </Button>
-              )}
-              {googleCalendarStatus === GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={Calendar}
-                  onClick={handleConnectGoogleCalendar}
-                  disabled={googleCalendarLoading}
-                >
-                  Grant calendar permission
-                </Button>
-              )}
-            </div>
-          )}
-
-          {googleCalendarError && (
-            <p className="text-sm text-red-400">{googleCalendarError}</p>
-          )}
-        </div>
-      </SettingsSection>
+      <GoogleCalendarSettingsSection />
 
       <SettingsSection
         title="Data Backup"

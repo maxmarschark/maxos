@@ -17,7 +17,6 @@ import { TasksProvider } from "../../features/tasks/TasksProvider"
 import { ActivityProvider } from "../../features/activity/ActivityProvider"
 import { DealsProvider } from "../../features/deals/DealsProvider"
 import { CalendarProvider } from "../../features/calendar/CalendarProvider"
-import { GoogleCalendarProvider } from "../../features/google-calendar/GoogleCalendarProvider"
 import { TodayBuildProvider } from "../../features/today/TodayBuildProvider"
 import { useTodayBuild } from "../../features/today/useTodayBuild"
 
@@ -81,11 +80,9 @@ export function AppShell() {
                     <ActivityProvider>
                       <DealsProvider>
                         <CalendarProvider>
-                          <GoogleCalendarProvider>
-                            <TodayBuildProvider>
-                              <AppShellContent />
-                            </TodayBuildProvider>
-                          </GoogleCalendarProvider>
+                          <TodayBuildProvider>
+                            <AppShellContent />
+                          </TodayBuildProvider>
                         </CalendarProvider>
                       </DealsProvider>
                     </ActivityProvider>
