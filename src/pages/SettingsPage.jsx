@@ -5,6 +5,8 @@ import { Card, CardHeader } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { useToast } from "../components/ui/useToast"
+import { useAuth } from "../features/auth/useAuth"
+import { useAccounts } from "../features/accounts/useAccounts"
 import { useCloudSync } from "../features/cloud/useCloudSync"
 import {
   APP_VERSION,
@@ -68,6 +70,8 @@ function formatConnectedUser(user) {
 
 export function SettingsPage() {
   const { toast } = useToast()
+  const { user, configured: authConfigured } = useAuth()
+  const { storageMode } = useAccounts()
   const { connected, lastSync, projectName, connectedUser, checking } = useCloudSync()
   const fileInputRef = useRef(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
@@ -153,21 +157,33 @@ export function SettingsPage() {
         icon={Settings}
         title="Settings"
         description="Backup, restore, and manage your local Max OS data"
-        badge={<StorageModeBadge mode={connected ? "cloud" : "local"} />}
+        badge={<StorageModeBadge mode={storageMode} />}
       />
 
       <SettingsSection
         title="Cloud Sync (Supabase)"
-        description="Cloud persistence status for Max OS modules."
+        description="Authentication and cloud persistence status."
       >
         <div className="flex items-start gap-2">
           <Cloud size={16} className="mt-0.5 shrink-0 text-zinc-500" />
           <div className="grid w-full gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
-              <p className="text-xs text-zinc-500">Connected</p>
+              <p className="text-xs text-zinc-500">Authenticated user</p>
+              <p className="truncate text-sm font-medium text-zinc-200">
+                {authConfigured ? (user?.email ?? "—") : "Not required (local-only)"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Supabase connected</p>
               <p className="text-sm font-medium text-zinc-200">
                 {checking ? "Checking…" : connected ? "Yes" : "No"}
               </p>
+            </div>
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Current data mode</p>
+              <div className="mt-1">
+                <StorageModeBadge mode={storageMode} />
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
               <p className="text-xs text-zinc-500">Last Sync</p>
@@ -178,9 +194,9 @@ export function SettingsPage() {
               <p className="text-sm font-medium text-zinc-200">{projectName}</p>
             </div>
             <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
-              <p className="text-xs text-zinc-500">Connected User</p>
-              <p className="text-sm font-medium text-zinc-200">
-                {formatConnectedUser(connectedUser)}
+              <p className="text-xs text-zinc-500">Database user</p>
+              <p className="truncate text-sm font-medium text-zinc-200">
+                {formatConnectedUser(connectedUser ?? user)}
               </p>
             </div>
           </div>

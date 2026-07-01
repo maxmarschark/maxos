@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { getSupabaseEnvStatus } from "../../lib/supabase/env"
 import { getSupabaseClient } from "../../lib/supabase/client"
-import { ensureSupabaseSession } from "../../lib/supabase/auth"
+import { getAuthUser } from "../../lib/supabase/auth"
+import { useAuth } from "../auth/useAuth"
 import { CloudSyncContext } from "./cloud-sync-context"
 
 const LAST_SYNC_KEY = "max-os-last-cloud-sync"
@@ -29,6 +30,7 @@ function getProjectName() {
 }
 
 export function CloudSyncProvider({ children }) {
+  const { user: authUser } = useAuth()
   const [connected, setConnected] = useState(false)
   const [connectedUser, setConnectedUser] = useState(null)
   const [lastSync, setLastSync] = useState(loadLastSync)
@@ -51,7 +53,7 @@ export function CloudSyncProvider({ children }) {
       return
     }
 
-    const user = await ensureSupabaseSession()
+    const user = authUser ?? (await getAuthUser())
     const { error } = await supabase.from("accounts").select("id").limit(1)
 
     if (!error) {
@@ -65,7 +67,7 @@ export function CloudSyncProvider({ children }) {
       setConnectedUser(user)
     }
     setChecking(false)
-  }, [])
+  }, [authUser])
 
   useEffect(() => {
     let cancelled = false
@@ -91,7 +93,7 @@ export function CloudSyncProvider({ children }) {
         return
       }
 
-      const user = await ensureSupabaseSession()
+      const user = authUser ?? (await getAuthUser())
       if (cancelled) return
 
       const { error } = await supabase.from("accounts").select("id").limit(1)
@@ -114,7 +116,7 @@ export function CloudSyncProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [authUser])
 
   const value = useMemo(
     () => ({

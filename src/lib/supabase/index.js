@@ -1,6 +1,16 @@
 export { getSupabaseConfig, getSupabaseEnvStatus, isSupabaseConfigured } from "./env"
 export { getSupabaseClient, resetSupabaseClient } from "./client"
-export { ensureSupabaseSession, getSupabaseUserId } from "./auth"
+export {
+  getAuthUser,
+  ensureSupabaseSession,
+  getSupabaseUserId,
+  signInWithGoogle,
+  signOut,
+  getUserDisplayName,
+  getUserEmail,
+  getUserInitial,
+  getUserAvatarUrl,
+} from "./auth"
 export {
   transformAccount,
   parseAccountRow,
