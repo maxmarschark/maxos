@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
+import { isSupabaseConfigured } from "../../lib/supabase/env"
 import { useOrders } from "../orders/useOrders"
 import { COMMISSIONS_STORAGE_KEY, EMPTY_COMMISSION_META } from "./constants"
 import { CommissionsContext } from "./commissions-context"
@@ -14,9 +15,56 @@ function loadStoredMeta() {
   return loadFromStorage(COMMISSIONS_STORAGE_KEY, [])
 }
 
+function loadCloudApi() {
+  return import("./commissionsSupabase")
+}
+
 export function CommissionsProvider({ children }) {
-  const { rawOrders, accounts, brands, refreshReferences } = useOrders()
+  const { rawOrders, accounts, brands } = useOrders()
   const [storedMeta, setStoredMeta] = useState(loadStoredMeta)
+  const [storageMode, setStorageMode] = useState("local")
+  const storageModeRef = useRef("local")
+
+  const setMode = useCallback((mode) => {
+    storageModeRef.current = mode
+    setStorageMode(mode)
+  }, [])
+
+  const fallBackToLocal = useCallback(() => {
+    console.warn("[Max OS Commissions] LOCAL — falling back to localStorage")
+    setMode("local")
+  }, [setMode])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function bootstrap() {
+      if (!isSupabaseConfigured()) {
+        console.info("[Max OS Commissions] LOCAL — Supabase env vars not configured")
+        return
+      }
+
+      const { initCloudCommissions } = await loadCloudApi()
+      const result = await initCloudCommissions()
+      if (cancelled) return
+
+      if (result.ok) {
+        setStoredMeta(result.commissions)
+        setMode("cloud")
+        return
+      }
+
+      console.info(
+        "[Max OS Commissions] LOCAL — using localStorage fallback",
+        result.reason ? `(${result.reason})` : ""
+      )
+    }
+
+    bootstrap()
+    return () => {
+      cancelled = true
+    }
+  }, [setMode])
 
   const effectiveMeta = useMemo(() => {
     const orderIds = new Set(rawOrders.map((o) => o.id))
@@ -36,17 +84,41 @@ export function CommissionsProvider({ children }) {
     saveToStorage(COMMISSIONS_STORAGE_KEY, effectiveMeta)
   }, [effectiveMeta])
 
-  const upsertMeta = useCallback((orderId, updates) => {
-    setStoredMeta((prev) => {
-      const existing = prev.find((m) => m.orderId === orderId)
-      if (existing) {
-        return prev.map((m) =>
-          m.orderId === orderId ? { ...m, ...updates, orderId } : m
-        )
+  const syncMetaToCloud = useCallback(
+    async (meta) => {
+      if (storageModeRef.current !== "cloud") return true
+      const { upsertCloudCommission } = await loadCloudApi()
+      const result = await upsertCloudCommission(meta)
+      if (!result.ok) {
+        console.error("[Max OS Commissions] Cloud upsert failed:", result.error)
+        fallBackToLocal()
+        return false
       }
-      return [...prev, { orderId, ...EMPTY_COMMISSION_META, ...updates }]
-    })
-  }, [])
+      return true
+    },
+    [fallBackToLocal]
+  )
+
+  const upsertMeta = useCallback(
+    (orderId, updates) => {
+      let updatedMeta = null
+
+      setStoredMeta((prev) => {
+        const existing = prev.find((m) => m.orderId === orderId)
+        if (existing) {
+          updatedMeta = { ...existing, ...updates, orderId }
+          return prev.map((m) => (m.orderId === orderId ? updatedMeta : m))
+        }
+        updatedMeta = { orderId, ...EMPTY_COMMISSION_META, ...updates }
+        return [...prev, updatedMeta]
+      })
+
+      if (updatedMeta) {
+        void syncMetaToCloud(updatedMeta)
+      }
+    },
+    [syncMetaToCloud]
+  )
 
   const updateCommission = useCallback(
     (orderId, updates) => {
@@ -77,10 +149,10 @@ export function CommissionsProvider({ children }) {
     summary,
     brandBreakdown,
     accountBreakdown,
+    storageMode,
     getCommission,
     updateCommission,
     markStatus,
-    refreshReferences,
   }
 
   return (

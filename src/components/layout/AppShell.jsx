@@ -7,12 +7,17 @@ import { ToastProvider } from "../ui/Toast"
 import { useCommandPalette } from "../../hooks/useCommandPalette"
 import { useSidebar } from "../../hooks/useSidebar"
 import { useLastRoute } from "../../hooks/useLastRoute"
+import { CloudSyncProvider } from "../../features/cloud/CloudSyncProvider"
 import { AccountsProvider } from "../../features/accounts/AccountsProvider"
+import { BrandsProvider } from "../../features/brands/BrandsProvider"
 import { OrdersProvider } from "../../features/orders/OrdersProvider"
 import { ContactsProvider } from "../../features/contacts/ContactsProvider"
 import { CommissionsProvider } from "../../features/commissions/CommissionsProvider"
-import { TodayBuildProvider } from "../../features/today/TodayBuildProvider"
 import { TasksProvider } from "../../features/tasks/TasksProvider"
+import { ActivityProvider } from "../../features/activity/ActivityProvider"
+import { DealsProvider } from "../../features/deals/DealsProvider"
+import { CalendarProvider } from "../../features/calendar/CalendarProvider"
+import { TodayBuildProvider } from "../../features/today/TodayBuildProvider"
 import { useTodayBuild } from "../../features/today/useTodayBuild"
 
 function AppShellContent() {
@@ -65,19 +70,29 @@ function AppShellContent() {
 export function AppShell() {
   return (
     <ToastProvider>
-      <AccountsProvider>
-        <OrdersProvider>
-          <ContactsProvider>
-            <CommissionsProvider>
-              <TasksProvider>
-                <TodayBuildProvider>
-                  <AppShellContent />
-                </TodayBuildProvider>
-              </TasksProvider>
-            </CommissionsProvider>
-          </ContactsProvider>
-        </OrdersProvider>
-      </AccountsProvider>
+      <CloudSyncProvider>
+        <AccountsProvider>
+          <BrandsProvider>
+            <OrdersProvider>
+              <ContactsProvider>
+                <CommissionsProvider>
+                  <TasksProvider>
+                    <ActivityProvider>
+                      <DealsProvider>
+                        <CalendarProvider>
+                          <TodayBuildProvider>
+                            <AppShellContent />
+                          </TodayBuildProvider>
+                        </CalendarProvider>
+                      </DealsProvider>
+                    </ActivityProvider>
+                  </TasksProvider>
+                </CommissionsProvider>
+              </ContactsProvider>
+            </OrdersProvider>
+          </BrandsProvider>
+        </AccountsProvider>
+      </CloudSyncProvider>
     </ToastProvider>
   )
 }

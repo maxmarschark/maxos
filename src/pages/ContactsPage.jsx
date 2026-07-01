@@ -15,6 +15,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -67,7 +68,7 @@ export function ContactsPage() {
     clearAllContacts,
     importContactsBatch,
     deleteImportBatch,
-    refreshReferences,
+    storageMode,
   } = useContacts()
 
   const [search, setSearch] = useState("")
@@ -122,19 +123,16 @@ export function ContactsPage() {
   }
 
   function handleAdd() {
-    refreshReferences()
     setEditingContact(null)
     setFormOpen(true)
   }
 
   function handleEdit(contact) {
-    refreshReferences()
     setEditingContact(contact)
     setFormOpen(true)
   }
 
   function handleImportOpen() {
-    refreshReferences()
     setImportOpen(true)
   }
 
@@ -177,6 +175,7 @@ export function ContactsPage() {
         icon={Users}
         title="Contacts"
         description={`${contacts.length} contact${contacts.length !== 1 ? "s" : ""} tracked`}
+        badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <>
             {selectedCount > 0 && (

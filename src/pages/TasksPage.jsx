@@ -4,6 +4,7 @@ import { useTasks } from "../features/tasks/useTasks"
 import { useAccounts } from "../features/accounts/useAccounts"
 import { useContacts } from "../features/contacts/useContacts"
 import { useOrders } from "../features/orders/useOrders"
+import { useBrands } from "../features/brands/useBrands"
 import { TasksTable } from "../features/tasks/components/TasksTable"
 import { TaskFormModal } from "../features/tasks/components/TaskFormModal"
 import { DeleteTaskModal } from "../features/tasks/components/DeleteTaskModal"
@@ -13,6 +14,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -26,9 +28,6 @@ import {
   PRIORITY_RANK,
 } from "../features/tasks/constants"
 import { filterTasks } from "../features/tasks/utils"
-import { loadFromStorage } from "../lib/storage"
-import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
-import { SEED_BRANDS } from "../features/brands/seed"
 
 const SORT_FIELD_TYPES = {
   dueDate: "date",
@@ -46,11 +45,11 @@ function sortByField(tasks, sortField, sortDir) {
 
 export function TasksPage() {
   const { toast } = useToast()
-  const { tasks, addTask, updateTask, deleteTask, markComplete } = useTasks()
+  const { tasks, storageMode, addTask, updateTask, deleteTask, markComplete } = useTasks()
   const { accounts } = useAccounts()
   const { contacts } = useContacts()
   const { orders } = useOrders()
-  const brands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
+  const { brands } = useBrands()
 
   const todayISO = getTodayISO()
   const [search, setSearch] = useState("")
@@ -116,6 +115,7 @@ export function TasksPage() {
         icon={CheckSquare}
         title="Tasks"
         description={`${openCount} open task${openCount !== 1 ? "s" : ""} · ${tasks.length} total`}
+        badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
             Add Task

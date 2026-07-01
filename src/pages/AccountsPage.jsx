@@ -11,7 +11,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
-import { Badge } from "../components/ui/Badge"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -103,14 +103,7 @@ export function AccountsPage() {
         icon={Building2}
         title="Accounts"
         description={`${accounts.length} retailer${accounts.length !== 1 ? "s" : ""} and distributor${accounts.length !== 1 ? "s" : ""}`}
-        badge={
-          <Badge
-            variant={storageMode === "cloud" ? "success" : "default"}
-            className="normal-case tracking-normal"
-          >
-            {storageMode === "cloud" ? "CLOUD" : "LOCAL"}
-          </Badge>
-        }
+        badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
             Add Account

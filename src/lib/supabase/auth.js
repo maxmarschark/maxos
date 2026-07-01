@@ -1,6 +1,6 @@
 import { getSupabaseClient } from "./client"
 
-const LOG_PREFIX = "[Max OS Accounts]"
+const LOG_PREFIX = "[Max OS Supabase]"
 
 function logAuthFailure(method, error) {
   if (!error) return

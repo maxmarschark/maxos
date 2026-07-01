@@ -3,7 +3,9 @@ import { useContacts } from "../features/contacts/useContacts"
 import { useTasks } from "../features/tasks/useTasks"
 import { useTodayBuild } from "../features/today/useTodayBuild"
 import { useTodayDashboard } from "../features/today/useTodayDashboard"
+import { useActivity } from "../features/activity/useActivity"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { TopMetricsRow } from "../features/today/components/TopMetricsRow"
 import { BuildMyDayPanel } from "../features/today/components/BuildMyDayPanel"
 import { TasksDueSection } from "../features/today/components/TasksDueSection"
@@ -17,6 +19,7 @@ import { useToast } from "../components/ui/useToast"
 
 export function TodayPage() {
   const dashboard = useTodayDashboard()
+  const { storageMode } = useActivity()
   const { plan, hasGenerated } = useTodayBuild()
   const { updateContact } = useContacts()
   const { markComplete } = useTasks()
@@ -40,7 +43,12 @@ export function TodayPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader icon={Sun} title={dashboard.greeting} description={subtitle} />
+      <PageHeader
+        icon={Sun}
+        title={dashboard.greeting}
+        description={subtitle}
+        badge={<StorageModeBadge mode={storageMode} />}
+      />
 
       <BuildMyDayPanel />
 

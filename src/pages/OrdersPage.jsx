@@ -11,6 +11,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -48,7 +49,7 @@ const SORT_FIELD_TYPES = {
 export function OrdersPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { orders, accounts, brands, addOrder, updateOrder, deleteOrder, refreshReferences } =
+  const { orders, accounts, brands, storageMode, addOrder, updateOrder, deleteOrder } =
     useOrders()
 
   const [search, setSearch] = useState("")
@@ -85,13 +86,11 @@ export function OrdersPage() {
   }
 
   function handleAdd() {
-    refreshReferences()
     setEditingOrder(null)
     setFormOpen(true)
   }
 
   function handleEdit(order) {
-    refreshReferences()
     setEditingOrder(order)
     setFormOpen(true)
   }
@@ -117,6 +116,7 @@ export function OrdersPage() {
         icon={Package}
         title="Orders"
         description={`${orders.length} order${orders.length !== 1 ? "s" : ""} tracked`}
+        badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
             Add Order

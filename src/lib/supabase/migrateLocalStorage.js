@@ -14,6 +14,8 @@ const UPLOAD_ORDER = [
   "commissions",
   "tasks",
   "activity_events",
+  "deals",
+  "calendar_events",
 ]
 
 /**

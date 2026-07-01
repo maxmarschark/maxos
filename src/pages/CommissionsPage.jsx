@@ -11,6 +11,7 @@ import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -53,6 +54,7 @@ export function CommissionsPage() {
     accountBreakdown,
     updateCommission,
     markStatus,
+    storageMode,
   } = useCommissions()
 
   const [search, setSearch] = useState("")
@@ -101,6 +103,7 @@ export function CommissionsPage() {
         icon={DollarSign}
         title="Commissions"
         description={`${commissions.length} commission record${commissions.length !== 1 ? "s" : ""} from orders`}
+        badge={<StorageModeBadge mode={storageMode} />}
       />
 
       <CommissionSummaryCards summary={summary} />

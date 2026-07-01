@@ -2,14 +2,10 @@ import { useMemo } from "react"
 import { useOrders } from "../orders/useOrders"
 import { useCommissions } from "../commissions/useCommissions"
 import { useContacts } from "../contacts/useContacts"
-import { useAccounts } from "../accounts/useAccounts"
 import { useTasks } from "../tasks/useTasks"
+import { useActivity } from "../activity/useActivity"
 import { flattenTasksForToday } from "../tasks/utils"
-import { loadFromStorage } from "../../lib/storage"
-import { BRANDS_STORAGE_KEY } from "../brands/constants"
-import { SEED_BRANDS } from "../brands/seed"
 import {
-  buildActivityFeed,
   buildCollectionsDue,
   buildCommissionSnapshot,
   buildContactFollowUps,
@@ -26,9 +22,8 @@ export function useTodayDashboard() {
   const { orders } = useOrders()
   const { commissions } = useCommissions()
   const { contacts } = useContacts()
-  const { accounts } = useAccounts()
   const { tasks } = useTasks()
-  const brands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
+  const { activity } = useActivity()
 
   const todayISO = getTodayISO()
 
@@ -40,14 +35,6 @@ export function useTodayDashboard() {
     const ordersAttention = buildOrdersAttention(orders)
     const ordersAttentionFlat = flattenOrdersAttention(ordersAttention)
     const commissionSnapshot = buildCommissionSnapshot(commissions, todayISO)
-    const activity = buildActivityFeed({
-      orders,
-      contacts,
-      accounts,
-      commissions,
-      tasks,
-      brands,
-    })
     const topMetrics = buildTopMetrics({
       collections,
       commissionSnapshot,
@@ -70,5 +57,5 @@ export function useTodayDashboard() {
       topMetrics,
       activity,
     }
-  }, [orders, commissions, contacts, accounts, tasks, brands, todayISO])
+  }, [orders, commissions, contacts, tasks, activity, todayISO])
 }

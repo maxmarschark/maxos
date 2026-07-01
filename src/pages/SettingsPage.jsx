@@ -3,9 +3,9 @@ import { Settings, Download, Upload, FileSpreadsheet, AlertTriangle, Info, Cloud
 import { PageHeader } from "../components/ui/PageHeader"
 import { Card, CardHeader } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
-import { Badge } from "../components/ui/Badge"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { useToast } from "../components/ui/useToast"
-import { getSupabaseEnvStatus } from "../lib/supabase/env"
+import { useCloudSync } from "../features/cloud/useCloudSync"
 import {
   APP_VERSION,
   estimateStorageUsageBytes,
@@ -43,6 +43,15 @@ function SettingsSection({ title, description, children, danger = false }) {
   )
 }
 
+function formatSyncDate(iso) {
+  if (!iso) return "Never"
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return "Unknown"
+  }
+}
+
 function formatBackupDate(iso) {
   if (!iso) return "Never"
   try {
@@ -52,8 +61,14 @@ function formatBackupDate(iso) {
   }
 }
 
+function formatConnectedUser(user) {
+  if (!user) return "—"
+  return user.email ?? user.id ?? "—"
+}
+
 export function SettingsPage() {
   const { toast } = useToast()
+  const { connected, lastSync, projectName, connectedUser, checking } = useCloudSync()
   const fileInputRef = useRef(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
@@ -64,7 +79,6 @@ export function SettingsPage() {
   const lastBackup = getLastBackupDate()
   const storageBytes = estimateStorageUsageBytes()
   const currentData = loadAllAppData()
-  const supabaseStatus = getSupabaseEnvStatus()
 
   function handleExportBackup() {
     exportBackup()
@@ -139,42 +153,35 @@ export function SettingsPage() {
         icon={Settings}
         title="Settings"
         description="Backup, restore, and manage your local Max OS data"
+        badge={<StorageModeBadge mode={connected ? "cloud" : "local"} />}
       />
 
       <SettingsSection
         title="Cloud Sync (Supabase)"
-        description="Environment configuration for future cloud persistence. Data still saves to localStorage."
+        description="Cloud persistence status for Max OS modules."
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2">
-            <Cloud size={16} className="mt-0.5 shrink-0 text-zinc-500" />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge
-                  variant={supabaseStatus.configured ? "success" : "default"}
-                  className="normal-case tracking-normal"
-                >
-                  {supabaseStatus.configured
-                    ? "Supabase configured"
-                    : "Supabase not configured"}
-                </Badge>
-              </div>
-              {supabaseStatus.configured ? (
-                <p className="mt-1.5 text-sm text-zinc-500">
-                  Connected to {supabaseStatus.urlHost}. Publishable key is set.
-                </p>
-              ) : (
-                <p className="mt-1.5 text-sm text-zinc-500">
-                  Add <code className="text-zinc-400">VITE_SUPABASE_URL</code> and{" "}
-                  <code className="text-zinc-400">VITE_SUPABASE_ANON_KEY</code> to{" "}
-                  <code className="text-zinc-400">.env</code>, then restart the dev server.
-                  {!supabaseStatus.hasUrl && !supabaseStatus.hasAnonKey
-                    ? " Both are missing."
-                    : !supabaseStatus.hasUrl
-                      ? " URL is missing."
-                      : " Publishable key is missing."}
-                </p>
-              )}
+        <div className="flex items-start gap-2">
+          <Cloud size={16} className="mt-0.5 shrink-0 text-zinc-500" />
+          <div className="grid w-full gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Connected</p>
+              <p className="text-sm font-medium text-zinc-200">
+                {checking ? "Checking…" : connected ? "Yes" : "No"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Last Sync</p>
+              <p className="text-sm font-medium text-zinc-200">{formatSyncDate(lastSync)}</p>
+            </div>
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Project Name</p>
+              <p className="text-sm font-medium text-zinc-200">{projectName}</p>
+            </div>
+            <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-4 py-3">
+              <p className="text-xs text-zinc-500">Connected User</p>
+              <p className="text-sm font-medium text-zinc-200">
+                {formatConnectedUser(connectedUser)}
+              </p>
             </div>
           </div>
         </div>

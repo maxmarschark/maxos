@@ -66,7 +66,7 @@ export function transformAccount(account, userId) {
 export function transformBrand(brand, userId) {
   return {
     id: brand.id,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     brand_name: brand.brandName ?? "",
     description: brand.description ?? "",
     website: brand.website ?? "",
@@ -87,33 +87,229 @@ export function transformBrandProducts(brands, userId) {
   const rows = []
   for (const brand of brands) {
     for (const product of brand.products ?? []) {
-      rows.push({
-        id: product.id,
-        brand_id: brand.id,
-        user_id: userId,
-        product_name: product.productName ?? "",
-        sku: product.sku ?? "",
-        category: product.category ?? "",
-        distributor_price: Number(product.distributorPrice) || 0,
-        wholesale_price: Number(product.wholesalePrice) || 0,
-        msrp: Number(product.msrp) || 0,
-        commission_override:
-          product.commissionOverride === null || product.commissionOverride === undefined
-            ? null
-            : Number(product.commissionOverride),
-        notes: product.notes ?? "",
-        created_at: toTimestamp(brand.createdAt),
-        updated_at: toTimestamp(brand.updatedAt),
-      })
+      rows.push(transformBrandProduct(product, brand.id, userId))
     }
   }
   return rows
 }
 
+export function transformDeal(deal, userId) {
+  return {
+    id: deal.id,
+    ...(userId ? { user_id: userId } : {}),
+    title: deal.title ?? "",
+    account_id: toNullable(deal.accountId),
+    brand_id: toNullable(deal.brandId),
+    stage: deal.stage ?? "Prospect",
+    value: Number(deal.value) || 0,
+    notes: deal.notes ?? "",
+    created_at: toTimestamp(deal.createdAt),
+    updated_at: toTimestamp(deal.updatedAt),
+  }
+}
+
+export function transformCalendarEvent(event, userId) {
+  return {
+    id: event.id,
+    ...(userId ? { user_id: userId } : {}),
+    title: event.title ?? "",
+    event_date: toDate(event.eventDate),
+    event_time: event.eventTime ?? "",
+    event_type: event.eventType ?? "Meeting",
+    account_id: toNullable(event.accountId),
+    contact_id: toNullable(event.contactId),
+    notes: event.notes ?? "",
+    created_at: toTimestamp(event.createdAt),
+    updated_at: toTimestamp(event.updatedAt),
+  }
+}
+
+export function parseBrandRow(row, products = []) {
+  return {
+    id: row.id,
+    brandName: row.brand_name ?? "",
+    description: row.description ?? "",
+    website: row.website ?? "",
+    mainContact: row.main_contact ?? "",
+    contactEmail: row.contact_email ?? "",
+    contactPhone: row.contact_phone ?? "",
+    commissionDefault: Number(row.commission_default) || 0,
+    status: row.status ?? "Active",
+    notes: row.notes ?? "",
+    monthlySales: Number(row.monthly_sales) || 0,
+    noteEntries: Array.isArray(row.note_entries) ? row.note_entries : [],
+    products: products.map(parseBrandProductRow),
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  }
+}
+
+export function parseBrandProductRow(row) {
+  return {
+    id: row.id,
+    brandId: row.brand_id ?? "",
+    productName: row.product_name ?? "",
+    sku: row.sku ?? "",
+    category: row.category ?? "",
+    distributorPrice: Number(row.distributor_price) || 0,
+    wholesalePrice: Number(row.wholesale_price) || 0,
+    msrp: Number(row.msrp) || 0,
+    commissionOverride:
+      row.commission_override === null || row.commission_override === undefined
+        ? null
+        : Number(row.commission_override),
+    notes: row.notes ?? "",
+  }
+}
+
+export function transformBrandProduct(product, brandId, userId) {
+  return {
+    id: product.id,
+    brand_id: brandId,
+    ...(userId ? { user_id: userId } : {}),
+    product_name: product.productName ?? "",
+    sku: product.sku ?? "",
+    category: product.category ?? "",
+    distributor_price: Number(product.distributorPrice) || 0,
+    wholesale_price: Number(product.wholesalePrice) || 0,
+    msrp: Number(product.msrp) || 0,
+    commission_override:
+      product.commissionOverride === null || product.commissionOverride === undefined
+        ? null
+        : Number(product.commissionOverride),
+    notes: product.notes ?? "",
+  }
+}
+
+export function parseContactRow(row) {
+  return {
+    id: row.id,
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
+    accountId: row.account_id ?? "",
+    brandId: row.brand_id ?? "",
+    company: row.company ?? "",
+    role: row.role ?? "",
+    type: row.type ?? "Buyer",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    preferredContactMethod: row.preferred_contact_method ?? "Call",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    notes: row.notes ?? "",
+    lastContactDate: row.last_contact_date ?? null,
+    nextFollowUpDate: row.next_follow_up_date ?? null,
+    importBatchId: row.import_batch_id ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  }
+}
+
+export function parseOrderRow(row) {
+  return {
+    id: row.id,
+    orderNumber: row.order_number ?? "",
+    accountId: row.account_id ?? "",
+    brandId: row.brand_id ?? "",
+    orderDate: row.order_date ?? null,
+    productsNotes: row.products_notes ?? "",
+    orderAmount: Number(row.order_amount) || 0,
+    commissionPercent: Number(row.commission_percent) || 0,
+    commissionAmount: Number(row.commission_amount) || 0,
+    orderStatus: row.order_status ?? "Draft",
+    paymentStatus: row.payment_status ?? "Unpaid",
+    paymentDueDate: row.payment_due_date ?? null,
+    notes: row.notes ?? "",
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  }
+}
+
+export function parseCommissionRow(row) {
+  return {
+    orderId: row.order_id,
+    status: row.status ?? "Pending",
+    dueDate: row.due_date ?? null,
+    paidDate: row.paid_date ?? null,
+    amountManual: Boolean(row.amount_manual),
+    amountOverride:
+      row.amount_override === null || row.amount_override === undefined
+        ? null
+        : Number(row.amount_override),
+    notes: row.notes ?? "",
+  }
+}
+
+export function parseTaskRow(row) {
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    description: row.description ?? "",
+    type: row.type ?? "Other",
+    priority: row.priority ?? "Medium",
+    status: row.status ?? "Open",
+    dueDate: row.due_date ?? "",
+    dueTime: row.due_time ?? "",
+    accountId: row.account_id ?? "",
+    contactId: row.contact_id ?? "",
+    brandId: row.brand_id ?? "",
+    orderId: row.order_id ?? "",
+    notes: row.notes ?? "",
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+    completedAt: row.completed_at ?? null,
+  }
+}
+
+export function parseActivityEventRow(row) {
+  return {
+    id: row.id,
+    type: row.event_type ?? "unknown",
+    label: row.label ?? "",
+    detail: row.detail ?? "",
+    timestamp: row.occurred_at,
+    link: row.link_path ?? "",
+    accountId: row.account_id ?? undefined,
+    contactId: row.contact_id ?? undefined,
+    brandId: row.brand_id ?? undefined,
+    orderId: row.order_id ?? undefined,
+    taskId: row.task_id ?? undefined,
+  }
+}
+
+export function parseDealRow(row) {
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    accountId: row.account_id ?? "",
+    brandId: row.brand_id ?? "",
+    stage: row.stage ?? "Prospect",
+    value: Number(row.value) || 0,
+    notes: row.notes ?? "",
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  }
+}
+
+export function parseCalendarEventRow(row) {
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    eventDate: row.event_date ?? null,
+    eventTime: row.event_time ?? "",
+    eventType: row.event_type ?? "Meeting",
+    accountId: row.account_id ?? "",
+    contactId: row.contact_id ?? "",
+    notes: row.notes ?? "",
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  }
+}
+
 export function transformContact(contact, userId) {
   return {
     id: contact.id,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     first_name: contact.firstName ?? "",
     last_name: contact.lastName ?? "",
     account_id: toNullable(contact.accountId),
@@ -138,7 +334,7 @@ export function transformContact(contact, userId) {
 export function transformOrder(order, userId) {
   return {
     id: order.id,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     order_number: String(order.orderNumber ?? ""),
     account_id: order.accountId,
     brand_id: order.brandId,
@@ -159,7 +355,7 @@ export function transformOrder(order, userId) {
 export function transformCommission(meta, userId) {
   return {
     order_id: meta.orderId,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     status: meta.status ?? "Pending",
     due_date: toDate(meta.dueDate),
     paid_date: toDate(meta.paidDate),
@@ -175,7 +371,7 @@ export function transformCommission(meta, userId) {
 export function transformTask(task, userId) {
   return {
     id: task.id,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     title: task.title ?? "",
     description: task.description ?? "",
     type: task.type ?? "Other",
@@ -197,7 +393,7 @@ export function transformTask(task, userId) {
 export function transformActivityEvent(event, userId) {
   return {
     id: event.id,
-    user_id: userId,
+    ...(userId ? { user_id: userId } : {}),
     event_type: event.type ?? "unknown",
     label: event.label ?? "",
     detail: event.detail ?? "",
@@ -244,6 +440,8 @@ export function transformLocalDataForSupabase(data, { userId }) {
   const orders = data.orders ?? []
   const commissions = data.commissions ?? []
   const tasks = data.tasks ?? []
+  const deals = data.deals ?? []
+  const calendarEvents = data.calendarEvents ?? []
 
   return {
     accounts: accounts.map((row) => transformAccount(row, userId)),
@@ -254,5 +452,7 @@ export function transformLocalDataForSupabase(data, { userId }) {
     commissions: commissions.map((row) => transformCommission(row, userId)),
     tasks: tasks.map((row) => transformTask(row, userId)),
     activity_events: buildActivityEventsFromLocalData(data, userId),
+    deals: deals.map((row) => transformDeal(row, userId)),
+    calendar_events: calendarEvents.map((row) => transformCalendarEvent(row, userId)),
   }
 }

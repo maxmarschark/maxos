@@ -10,6 +10,7 @@ import { SearchInput } from "../components/ui/SearchInput"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
 import { PageHeader } from "../components/ui/PageHeader"
+import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
@@ -36,7 +37,7 @@ const SORT_FIELD_TYPES = {
 export function BrandsPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { brands, addBrand, updateBrand, deleteBrand } = useBrands()
+  const { brands, storageMode, addBrand, updateBrand, deleteBrand } = useBrands()
 
   const [search, setSearch] = useState("")
   const { sortField, sortDir, handleSort } = useTableSort("brandName", "asc")
@@ -83,6 +84,7 @@ export function BrandsPage() {
         icon={Tags}
         title="Brands"
         description={`${brands.length} brand partner${brands.length !== 1 ? "s" : ""}`}
+        badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
             Add Brand

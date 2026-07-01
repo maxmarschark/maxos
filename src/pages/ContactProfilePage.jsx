@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useContacts } from "../features/contacts/useContacts"
 import { useOrders } from "../features/orders/useOrders"
 import { useTasks } from "../features/tasks/useTasks"
+import { useBrands } from "../features/brands/useBrands"
 import { ContactFormModal } from "../features/contacts/components/ContactFormModal"
 import { DeleteContactModal } from "../features/contacts/components/DeleteContactModal"
 import { CreateFollowUpButton } from "../features/tasks/components/CreateFollowUpButton"
@@ -18,9 +19,6 @@ import { ContactOrdersSection } from "../features/contacts/components/ContactOrd
 import { ContactTasksSection } from "../features/contacts/components/ContactTasksSection"
 import { ContactFollowUpHistory } from "../features/contacts/components/ContactFollowUpHistory"
 import { TYPE_VARIANTS } from "../features/contacts/constants"
-import { loadFromStorage } from "../lib/storage"
-import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
-import { SEED_BRANDS } from "../features/brands/seed"
 import { useToast } from "../components/ui/useToast"
 
 function DetailRow({ label, children }) {
@@ -35,12 +33,11 @@ function DetailRow({ label, children }) {
 export function ContactProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getContact, updateContact, deleteContact, accounts, brands, refreshReferences } =
-    useContacts()
+  const { getContact, updateContact, deleteContact, accounts } = useContacts()
   const { orders } = useOrders()
   const { addTask, tasks } = useTasks()
+  const { brands } = useBrands()
   const { toast } = useToast()
-  const allBrands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
 
   const contact = getContact(id)
   const [editOpen, setEditOpen] = useState(false)
@@ -69,7 +66,6 @@ export function ContactProfilePage() {
   }
 
   function handleEdit() {
-    refreshReferences()
     setEditOpen(true)
   }
 
@@ -165,7 +161,7 @@ export function ContactProfilePage() {
             initialValues={buildFollowUpFromContact(contact, getTodayISO())}
             accounts={accounts}
             contacts={[contact]}
-            brands={allBrands}
+            brands={brands}
             orders={orders}
             onCreate={(data) => {
               addTask(data)

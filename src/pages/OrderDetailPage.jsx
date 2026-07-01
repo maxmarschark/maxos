@@ -38,8 +38,7 @@ function DetailRow({ label, children }) {
 export function OrderDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getOrder, updateOrder, deleteOrder, accounts, brands, refreshReferences } =
-    useOrders()
+  const { getOrder, updateOrder, deleteOrder, accounts, brands } = useOrders()
   const { contacts } = useContacts()
   const { commissions } = useCommissions()
 
@@ -70,7 +69,6 @@ export function OrderDetailPage() {
   }
 
   function handleEdit() {
-    refreshReferences()
     setEditOpen(true)
   }
 

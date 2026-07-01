@@ -1,6 +1,6 @@
 -- Max OS — Supabase schema (v1)
 -- Run this in the Supabase SQL Editor after creating a project.
--- Requires Supabase Auth; RLS scopes all rows to auth.uid().
+-- Primary keys and FKs use uuid (compatible with Max OS crypto.randomUUID() ids).
 
 create extension if not exists "pgcrypto";
 
@@ -8,7 +8,7 @@ create extension if not exists "pgcrypto";
 -- accounts
 -- ---------------------------------------------------------------------------
 create table if not exists public.accounts (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   business_name text not null default '',
   owner text not null default '',
@@ -35,7 +35,7 @@ create index if not exists accounts_business_name_idx on public.accounts (busine
 -- brands
 -- ---------------------------------------------------------------------------
 create table if not exists public.brands (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   brand_name text not null default '',
   description text not null default '',
@@ -59,8 +59,8 @@ create index if not exists brands_brand_name_idx on public.brands (brand_name);
 -- brand_products (normalized from brands.products in localStorage)
 -- ---------------------------------------------------------------------------
 create table if not exists public.brand_products (
-  id text primary key,
-  brand_id text not null references public.brands (id) on delete cascade,
+  id uuid primary key,
+  brand_id uuid not null references public.brands (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
   product_name text not null default '',
   sku text not null default '',
@@ -81,12 +81,12 @@ create index if not exists brand_products_user_id_idx on public.brand_products (
 -- contacts
 -- ---------------------------------------------------------------------------
 create table if not exists public.contacts (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   first_name text not null default '',
   last_name text not null default '',
-  account_id text references public.accounts (id) on delete set null,
-  brand_id text references public.brands (id) on delete set null,
+  account_id uuid references public.accounts (id) on delete set null,
+  brand_id uuid references public.brands (id) on delete set null,
   company text not null default '',
   role text not null default '',
   type text not null default 'Buyer',
@@ -111,11 +111,11 @@ create index if not exists contacts_brand_id_idx on public.contacts (brand_id);
 -- orders
 -- ---------------------------------------------------------------------------
 create table if not exists public.orders (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   order_number text not null default '',
-  account_id text not null references public.accounts (id) on delete restrict,
-  brand_id text not null references public.brands (id) on delete restrict,
+  account_id uuid not null references public.accounts (id) on delete restrict,
+  brand_id uuid not null references public.brands (id) on delete restrict,
   order_date date,
   products_notes text not null default '',
   order_amount numeric(12, 2) not null default 0,
@@ -138,7 +138,7 @@ create index if not exists orders_order_number_idx on public.orders (order_numbe
 -- commissions (metadata keyed by order_id in localStorage)
 -- ---------------------------------------------------------------------------
 create table if not exists public.commissions (
-  order_id text primary key references public.orders (id) on delete cascade,
+  order_id uuid primary key references public.orders (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'Pending',
   due_date date,
@@ -155,7 +155,7 @@ create index if not exists commissions_status_idx on public.commissions (status)
 -- tasks
 -- ---------------------------------------------------------------------------
 create table if not exists public.tasks (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   title text not null default '',
   description text not null default '',
@@ -164,10 +164,10 @@ create table if not exists public.tasks (
   status text not null default 'Open',
   due_date date,
   due_time text not null default '',
-  account_id text references public.accounts (id) on delete set null,
-  contact_id text references public.contacts (id) on delete set null,
-  brand_id text references public.brands (id) on delete set null,
-  order_id text references public.orders (id) on delete set null,
+  account_id uuid references public.accounts (id) on delete set null,
+  contact_id uuid references public.contacts (id) on delete set null,
+  brand_id uuid references public.brands (id) on delete set null,
+  order_id uuid references public.orders (id) on delete set null,
   notes text not null default '',
   created_at timestamptz,
   updated_at timestamptz,
@@ -182,18 +182,18 @@ create index if not exists tasks_status_idx on public.tasks (status);
 -- activity_events (materialized timeline for sync / querying)
 -- ---------------------------------------------------------------------------
 create table if not exists public.activity_events (
-  id text primary key,
+  id uuid primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   event_type text not null default '',
   label text not null default '',
   detail text not null default '',
   occurred_at timestamptz not null,
   link_path text not null default '',
-  account_id text references public.accounts (id) on delete set null,
-  contact_id text references public.contacts (id) on delete set null,
-  brand_id text references public.brands (id) on delete set null,
-  order_id text references public.orders (id) on delete set null,
-  task_id text references public.tasks (id) on delete set null,
+  account_id uuid references public.accounts (id) on delete set null,
+  contact_id uuid references public.contacts (id) on delete set null,
+  brand_id uuid references public.brands (id) on delete set null,
+  order_id uuid references public.orders (id) on delete set null,
+  task_id uuid references public.tasks (id) on delete set null,
   metadata jsonb not null default '{}'::jsonb
 );
 
@@ -214,48 +214,80 @@ alter table public.tasks enable row level security;
 alter table public.activity_events enable row level security;
 
 -- accounts
+drop policy if exists "accounts_select_own" on public.accounts;
+drop policy if exists "accounts_insert_own" on public.accounts;
+drop policy if exists "accounts_update_own" on public.accounts;
+drop policy if exists "accounts_delete_own" on public.accounts;
 create policy "accounts_select_own" on public.accounts for select using (auth.uid() = user_id);
 create policy "accounts_insert_own" on public.accounts for insert with check (auth.uid() = user_id);
 create policy "accounts_update_own" on public.accounts for update using (auth.uid() = user_id);
 create policy "accounts_delete_own" on public.accounts for delete using (auth.uid() = user_id);
 
 -- brands
+drop policy if exists "brands_select_own" on public.brands;
+drop policy if exists "brands_insert_own" on public.brands;
+drop policy if exists "brands_update_own" on public.brands;
+drop policy if exists "brands_delete_own" on public.brands;
 create policy "brands_select_own" on public.brands for select using (auth.uid() = user_id);
 create policy "brands_insert_own" on public.brands for insert with check (auth.uid() = user_id);
 create policy "brands_update_own" on public.brands for update using (auth.uid() = user_id);
 create policy "brands_delete_own" on public.brands for delete using (auth.uid() = user_id);
 
 -- brand_products
+drop policy if exists "brand_products_select_own" on public.brand_products;
+drop policy if exists "brand_products_insert_own" on public.brand_products;
+drop policy if exists "brand_products_update_own" on public.brand_products;
+drop policy if exists "brand_products_delete_own" on public.brand_products;
 create policy "brand_products_select_own" on public.brand_products for select using (auth.uid() = user_id);
 create policy "brand_products_insert_own" on public.brand_products for insert with check (auth.uid() = user_id);
 create policy "brand_products_update_own" on public.brand_products for update using (auth.uid() = user_id);
 create policy "brand_products_delete_own" on public.brand_products for delete using (auth.uid() = user_id);
 
 -- contacts
+drop policy if exists "contacts_select_own" on public.contacts;
+drop policy if exists "contacts_insert_own" on public.contacts;
+drop policy if exists "contacts_update_own" on public.contacts;
+drop policy if exists "contacts_delete_own" on public.contacts;
 create policy "contacts_select_own" on public.contacts for select using (auth.uid() = user_id);
 create policy "contacts_insert_own" on public.contacts for insert with check (auth.uid() = user_id);
 create policy "contacts_update_own" on public.contacts for update using (auth.uid() = user_id);
 create policy "contacts_delete_own" on public.contacts for delete using (auth.uid() = user_id);
 
 -- orders
+drop policy if exists "orders_select_own" on public.orders;
+drop policy if exists "orders_insert_own" on public.orders;
+drop policy if exists "orders_update_own" on public.orders;
+drop policy if exists "orders_delete_own" on public.orders;
 create policy "orders_select_own" on public.orders for select using (auth.uid() = user_id);
 create policy "orders_insert_own" on public.orders for insert with check (auth.uid() = user_id);
 create policy "orders_update_own" on public.orders for update using (auth.uid() = user_id);
 create policy "orders_delete_own" on public.orders for delete using (auth.uid() = user_id);
 
 -- commissions
+drop policy if exists "commissions_select_own" on public.commissions;
+drop policy if exists "commissions_insert_own" on public.commissions;
+drop policy if exists "commissions_update_own" on public.commissions;
+drop policy if exists "commissions_delete_own" on public.commissions;
 create policy "commissions_select_own" on public.commissions for select using (auth.uid() = user_id);
 create policy "commissions_insert_own" on public.commissions for insert with check (auth.uid() = user_id);
 create policy "commissions_update_own" on public.commissions for update using (auth.uid() = user_id);
 create policy "commissions_delete_own" on public.commissions for delete using (auth.uid() = user_id);
 
 -- tasks
+drop policy if exists "tasks_select_own" on public.tasks;
+drop policy if exists "tasks_insert_own" on public.tasks;
+drop policy if exists "tasks_update_own" on public.tasks;
+drop policy if exists "tasks_delete_own" on public.tasks;
 create policy "tasks_select_own" on public.tasks for select using (auth.uid() = user_id);
 create policy "tasks_insert_own" on public.tasks for insert with check (auth.uid() = user_id);
 create policy "tasks_update_own" on public.tasks for update using (auth.uid() = user_id);
 create policy "tasks_delete_own" on public.tasks for delete using (auth.uid() = user_id);
 
 -- activity_events
+drop policy if exists "activity_events_select_own" on public.activity_events;
+drop policy if exists "activity_events_insert_own" on public.activity_events;
+drop policy if exists "activity_events_update_own" on public.activity_events;
+drop policy if exists "activity_events_delete_own" on public.activity_events;
 create policy "activity_events_select_own" on public.activity_events for select using (auth.uid() = user_id);
 create policy "activity_events_insert_own" on public.activity_events for insert with check (auth.uid() = user_id);
 create policy "activity_events_update_own" on public.activity_events for update using (auth.uid() = user_id);
