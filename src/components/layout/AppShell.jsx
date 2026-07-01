@@ -5,53 +5,70 @@ import { PageContainer } from "./PageContainer"
 import { CommandPalette } from "../command-palette/CommandPalette"
 import { useCommandPalette } from "../../hooks/useCommandPalette"
 import { useSidebar } from "../../hooks/useSidebar"
+import { AccountsProvider } from "../../features/accounts/AccountsProvider"
 import { OrdersProvider } from "../../features/orders/OrdersProvider"
 import { ContactsProvider } from "../../features/contacts/ContactsProvider"
 import { CommissionsProvider } from "../../features/commissions/CommissionsProvider"
+import { TodayBuildProvider } from "../../features/today/TodayBuildProvider"
+import { useTodayBuild } from "../../features/today/useTodayBuild"
 
-export function AppShell() {
+function AppShellContent() {
   const { isOpen, open, close } = useCommandPalette()
   const { collapsed, mobileOpen, toggleCollapsed, openMobile, closeMobile } =
     useSidebar()
+  const { buildDayPlan, isBuilding } = useTodayBuild()
 
-  function handleCommandSelect() {
-    // Commands will be wired to real actions in future iterations
+  function handleCommandSelect(action) {
+    if (action?.id === "build-day") {
+      buildDayPlan()
+    }
   }
 
   return (
-    <OrdersProvider>
-      <ContactsProvider>
-        <CommissionsProvider>
-          <div className="flex h-screen overflow-hidden bg-zinc-950">
-            <Sidebar
-              collapsed={collapsed}
-              mobileOpen={mobileOpen}
-              onToggleCollapsed={toggleCollapsed}
-              onCloseMobile={closeMobile}
-            />
+    <div className="flex h-screen overflow-hidden bg-zinc-950">
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onToggleCollapsed={toggleCollapsed}
+        onCloseMobile={closeMobile}
+      />
 
-            <div className="flex min-w-0 flex-1 flex-col">
-              <TopNav
-                onOpenSearch={open}
-                onOpenMobile={openMobile}
-                onBuildDay={() => handleCommandSelect({ id: "build-day" })}
-              />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopNav
+          onOpenSearch={open}
+          onOpenMobile={openMobile}
+          onBuildDay={buildDayPlan}
+          isBuilding={isBuilding}
+        />
 
-              <main className="flex-1 overflow-y-auto">
-                <PageContainer>
-                  <Outlet />
-                </PageContainer>
-              </main>
-            </div>
+        <main className="flex-1 overflow-y-auto">
+          <PageContainer>
+            <Outlet />
+          </PageContainer>
+        </main>
+      </div>
 
-            <CommandPalette
-              isOpen={isOpen}
-              onClose={close}
-              onSelect={handleCommandSelect}
-            />
-          </div>
-        </CommissionsProvider>
-      </ContactsProvider>
-    </OrdersProvider>
+      <CommandPalette
+        isOpen={isOpen}
+        onClose={close}
+        onSelect={handleCommandSelect}
+      />
+    </div>
+  )
+}
+
+export function AppShell() {
+  return (
+    <AccountsProvider>
+      <OrdersProvider>
+        <ContactsProvider>
+          <CommissionsProvider>
+            <TodayBuildProvider>
+              <AppShellContent />
+            </TodayBuildProvider>
+          </CommissionsProvider>
+        </ContactsProvider>
+      </OrdersProvider>
+    </AccountsProvider>
   )
 }

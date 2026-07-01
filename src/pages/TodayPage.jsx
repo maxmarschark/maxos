@@ -1,48 +1,57 @@
-import { useMemo } from "react"
-import { todayData } from "../data/today"
-import { RevenueMetrics } from "../components/today/RevenueMetrics"
-import { TasksPanel } from "../components/today/TasksPanel"
-import { AIPrioritiesPanel } from "../components/today/AIPrioritiesPanel"
-import { RoutePanel } from "../components/today/RoutePanel"
-import { useOrders } from "../features/orders/useOrders"
-import { useCommissions } from "../features/commissions/useCommissions"
-import { computeDashboardMetrics } from "../features/orders/utils"
-import { computeDashboardPendingCommissions } from "../features/commissions/utils"
+import { useContacts } from "../features/contacts/useContacts"
+import { useTodayBuild } from "../features/today/useTodayBuild"
+import { useTodayDashboard } from "../features/today/useTodayDashboard"
+import { TopMetricsRow } from "../features/today/components/TopMetricsRow"
+import { BuildMyDayPanel } from "../features/today/components/BuildMyDayPanel"
+import { CollectionsSection } from "../features/today/components/CollectionsSection"
+import { FollowUpsSection } from "../features/today/components/FollowUpsSection"
+import { OrdersAttentionSection } from "../features/today/components/OrdersAttentionSection"
+import { CommissionSnapshot } from "../features/today/components/CommissionSnapshot"
+import { ActivityFeed } from "../features/today/components/ActivityFeed"
+import { getTodayISO } from "../features/today/utils"
 
 export function TodayPage() {
-  const { rawOrders } = useOrders()
-  const { commissions } = useCommissions()
-  const { greeting, subtitle, tasks, aiPriorities, suggestedRoute } = todayData
+  const dashboard = useTodayDashboard()
+  const { plan, hasGenerated } = useTodayBuild()
+  const { updateContact } = useContacts()
 
-  const metrics = useMemo(() => {
-    const orderMetrics = computeDashboardMetrics(rawOrders)
-    const pendingCommissions = computeDashboardPendingCommissions(commissions)
-
-    return {
-      revenueToday: todayData.metrics.revenueToday,
-      collectionsDue: orderMetrics.collectionsDue,
-      openOrders: orderMetrics.openOrders,
-      pendingCommissions,
-    }
-  }, [rawOrders, commissions])
+  function handleCompleteFollowUp(contactId) {
+    updateContact(contactId, {
+      lastContactDate: getTodayISO(),
+      nextFollowUpDate: null,
+    })
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-          {greeting}
+          {dashboard.greeting}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+        <p className="mt-0.5 text-sm text-zinc-500">
+          {hasGenerated
+            ? `${plan.length} prioritized action${plan.length !== 1 ? "s" : ""} in your plan`
+            : dashboard.subtitle}
+        </p>
       </div>
 
-      <RevenueMetrics metrics={metrics} />
+      <TopMetricsRow metrics={dashboard.topMetrics} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <TasksPanel tasks={tasks} />
-        <AIPrioritiesPanel priorities={aiPriorities} />
+      <BuildMyDayPanel />
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <CollectionsSection collections={dashboard.collections} />
+        <FollowUpsSection
+          followUpsFlat={dashboard.followUpsFlat}
+          onCompleteFollowUp={handleCompleteFollowUp}
+        />
+        <OrdersAttentionSection ordersFlat={dashboard.ordersAttentionFlat} />
       </div>
 
-      <RoutePanel route={suggestedRoute} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <CommissionSnapshot snapshot={dashboard.commissionSnapshot} />
+        <ActivityFeed activity={dashboard.activity} />
+      </div>
     </div>
   )
 }

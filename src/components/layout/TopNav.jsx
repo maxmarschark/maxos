@@ -4,7 +4,7 @@ import { Button } from "../ui/Button"
 import { SearchInput } from "../ui/SearchInput"
 import { UserMenu } from "./UserMenu"
 
-export function TopNav({ onOpenSearch, onOpenMobile, onBuildDay }) {
+export function TopNav({ onOpenSearch, onOpenMobile, onBuildDay, isBuilding = false }) {
   const matches = useMatches()
   const handle = matches.at(-1)?.handle
   const title = handle?.title ?? "Max OS"
@@ -50,17 +50,19 @@ export function TopNav({ onOpenSearch, onOpenMobile, onBuildDay }) {
           size="sm"
           icon={Sparkles}
           onClick={onBuildDay}
+          disabled={isBuilding}
           className="hidden sm:inline-flex"
         >
-          Build My Day
+          {isBuilding ? "Building…" : "Build My Day"}
         </Button>
         <Button
           variant="primary"
           size="icon"
           icon={Sparkles}
           onClick={onBuildDay}
+          disabled={isBuilding}
           className="sm:hidden"
-          aria-label="Build My Day"
+          aria-label={isBuilding ? "Building plan" : "Build My Day"}
         />
         <UserMenu />
       </div>

@@ -1,0 +1,74 @@
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { Package, UserPlus, Building2, DollarSign } from "lucide-react"
+import { Card } from "../../../components/ui/Card"
+import { SectionHeader } from "./SectionHeader"
+import { ViewAllToggle } from "./ViewAllToggle"
+
+const LIMIT = 5
+
+const typeIcons = {
+  order_created: Package,
+  contact_added: UserPlus,
+  account_edited: Building2,
+  commission_paid: DollarSign,
+}
+
+function formatActivityTime(timestamp) {
+  try {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) return "Today"
+    if (diffDays === 1) return "Yesterday"
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  } catch {
+    return "—"
+  }
+}
+
+export function ActivityFeed({ activity }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? activity : activity.slice(0, LIMIT)
+
+  return (
+    <Card padding="md">
+      <SectionHeader title="Activity Feed" count={activity.length} />
+      {activity.length === 0 ? (
+        <p className="text-sm text-zinc-600">No recent activity.</p>
+      ) : (
+        <>
+          <div className="space-y-0.5">
+            {visible.map((event) => {
+              const Icon = typeIcons[event.type] ?? Package
+              return (
+                <Link
+                  key={event.id}
+                  to={event.link}
+                  className="flex items-center gap-2.5 rounded-md px-1.5 py-2 transition-colors hover:bg-zinc-800/40"
+                >
+                  <Icon size={13} className="shrink-0 text-zinc-600" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] text-zinc-200">{event.label}</p>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-zinc-600">
+                    {formatActivityTime(event.timestamp)}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+          <div className="mt-2 flex justify-end">
+            <ViewAllToggle
+              expanded={expanded}
+              total={activity.length}
+              limit={LIMIT}
+              onToggle={() => setExpanded((v) => !v)}
+            />
+          </div>
+        </>
+      )}
+    </Card>
+  )
+}
