@@ -1,4 +1,4 @@
-import { TrendingUp, AlertCircle, Package } from "lucide-react"
+import { TrendingUp, AlertCircle, Package, DollarSign } from "lucide-react"
 import { Card } from "../ui/Card"
 import { Badge } from "../ui/Badge"
 import { cn } from "../../lib/cn"
@@ -8,6 +8,7 @@ function MetricCard({ icon: Icon, label, value, meta, accent, children }) {
     indigo: "text-indigo-400",
     red: "text-red-400",
     emerald: "text-emerald-400",
+    amber: "text-amber-400",
   }
 
   return (
@@ -33,7 +34,7 @@ function MetricCard({ icon: Icon, label, value, meta, accent, children }) {
 
 export function RevenueMetrics({ metrics }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard
         icon={TrendingUp}
         label="Revenue Today"
@@ -52,7 +53,8 @@ export function RevenueMetrics({ metrics }) {
         }}
       >
         <p className="mt-1 text-xs text-zinc-600">
-          {metrics.collectionsDue.count} accounts awaiting payment
+          {metrics.collectionsDue.count} order{metrics.collectionsDue.count !== 1 ? "s" : ""}{" "}
+          awaiting payment
         </p>
       </MetricCard>
       <MetricCard
@@ -66,6 +68,16 @@ export function RevenueMetrics({ metrics }) {
           {metrics.openOrders.inTransit} in transit
         </p>
       </MetricCard>
+      <MetricCard
+        icon={DollarSign}
+        label="Pending Commissions"
+        value={metrics.pendingCommissions.value}
+        accent="amber"
+        meta={{
+          text: `${metrics.pendingCommissions.count} unpaid`,
+          variant: "warning",
+        }}
+      />
     </div>
   )
 }

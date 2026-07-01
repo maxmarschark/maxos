@@ -1,11 +1,25 @@
+import { useMemo } from "react"
 import { todayData } from "../data/today"
 import { RevenueMetrics } from "../components/today/RevenueMetrics"
 import { TasksPanel } from "../components/today/TasksPanel"
 import { AIPrioritiesPanel } from "../components/today/AIPrioritiesPanel"
 import { RoutePanel } from "../components/today/RoutePanel"
+import { useOrders } from "../features/orders/useOrders"
+import { computeDashboardMetrics } from "../features/orders/utils"
 
 export function TodayPage() {
-  const { greeting, subtitle, metrics, tasks, aiPriorities, suggestedRoute } = todayData
+  const { rawOrders } = useOrders()
+  const { greeting, subtitle, tasks, aiPriorities, suggestedRoute } = todayData
+
+  const metrics = useMemo(() => {
+    const orderMetrics = computeDashboardMetrics(rawOrders)
+    return {
+      revenueToday: todayData.metrics.revenueToday,
+      collectionsDue: orderMetrics.collectionsDue,
+      openOrders: orderMetrics.openOrders,
+      pendingCommissions: orderMetrics.pendingCommissions,
+    }
+  }, [rawOrders])
 
   return (
     <div className="space-y-6">

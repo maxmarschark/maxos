@@ -7,6 +7,20 @@ export function formatCurrency(value) {
   }).format(value ?? 0)
 }
 
+export function formatCurrencyDetailed(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value ?? 0)
+}
+
+export function formatPercent(value) {
+  if (value == null || value === "") return "—"
+  return `${Number(value)}%`
+}
+
 export function formatDate(value) {
   if (!value) return "—"
   return new Date(value).toLocaleDateString("en-US", {

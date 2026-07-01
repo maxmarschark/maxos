@@ -4,10 +4,14 @@ import { TodayPage } from "../pages/TodayPage"
 import { AccountsLayout } from "../features/accounts/AccountsLayout"
 import { AccountsPage } from "../pages/AccountsPage"
 import { AccountProfilePage } from "../pages/AccountProfilePage"
+import { BrandsLayout } from "../features/brands/BrandsLayout"
+import { BrandsPage } from "../pages/BrandsPage"
+import { BrandProfilePage } from "../pages/BrandProfilePage"
+import { OrdersLayout } from "../features/orders/OrdersLayout"
+import { OrdersPage } from "../pages/OrdersPage"
+import { OrderDetailPage } from "../pages/OrderDetailPage"
 import {
   ContactsPage,
-  BrandsPage,
-  OrdersPage,
   DealsPage,
   CalendarPage,
   CommissionsPage,
@@ -50,13 +54,21 @@ export const router = createBrowserRouter([
       },
       {
         path: "brands",
-        element: <BrandsPage />,
+        element: <BrandsLayout />,
         handle: { title: "Brands", description: "Brand partners and product lines" },
+        children: [
+          { index: true, element: <BrandsPage /> },
+          { path: ":id", element: <BrandProfilePage /> },
+        ],
       },
       {
         path: "orders",
-        element: <OrdersPage />,
+        element: <OrdersLayout />,
         handle: { title: "Orders", description: "Purchase orders and fulfillment" },
+        children: [
+          { index: true, element: <OrdersPage /> },
+          { path: ":id", element: <OrderDetailPage /> },
+        ],
       },
       {
         path: "deals",

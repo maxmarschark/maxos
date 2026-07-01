@@ -5,6 +5,7 @@ import { PageContainer } from "./PageContainer"
 import { CommandPalette } from "../command-palette/CommandPalette"
 import { useCommandPalette } from "../../hooks/useCommandPalette"
 import { useSidebar } from "../../hooks/useSidebar"
+import { OrdersProvider } from "../../features/orders/OrdersProvider"
 
 export function AppShell() {
   const { isOpen, open, close } = useCommandPalette()
@@ -16,33 +17,35 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950">
-      <Sidebar
-        collapsed={collapsed}
-        mobileOpen={mobileOpen}
-        onToggleCollapsed={toggleCollapsed}
-        onCloseMobile={closeMobile}
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopNav
-          onOpenSearch={open}
-          onOpenMobile={openMobile}
-          onBuildDay={() => handleCommandSelect({ id: "build-day" })}
+    <OrdersProvider>
+      <div className="flex h-screen overflow-hidden bg-zinc-950">
+        <Sidebar
+          collapsed={collapsed}
+          mobileOpen={mobileOpen}
+          onToggleCollapsed={toggleCollapsed}
+          onCloseMobile={closeMobile}
         />
 
-        <main className="flex-1 overflow-y-auto">
-          <PageContainer>
-            <Outlet />
-          </PageContainer>
-        </main>
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopNav
+            onOpenSearch={open}
+            onOpenMobile={openMobile}
+            onBuildDay={() => handleCommandSelect({ id: "build-day" })}
+          />
 
-      <CommandPalette
-        isOpen={isOpen}
-        onClose={close}
-        onSelect={handleCommandSelect}
-      />
-    </div>
+          <main className="flex-1 overflow-y-auto">
+            <PageContainer>
+              <Outlet />
+            </PageContainer>
+          </main>
+        </div>
+
+        <CommandPalette
+          isOpen={isOpen}
+          onClose={close}
+          onSelect={handleCommandSelect}
+        />
+      </div>
+    </OrdersProvider>
   )
 }
