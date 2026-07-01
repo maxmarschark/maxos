@@ -10,8 +10,10 @@ import { BrandProfilePage } from "../pages/BrandProfilePage"
 import { OrdersLayout } from "../features/orders/OrdersLayout"
 import { OrdersPage } from "../pages/OrdersPage"
 import { OrderDetailPage } from "../pages/OrderDetailPage"
+import { ContactsLayout } from "../features/contacts/ContactsLayout"
+import { ContactsPage } from "../pages/ContactsPage"
+import { ContactProfilePage } from "../pages/ContactProfilePage"
 import {
-  ContactsPage,
   DealsPage,
   CalendarPage,
   CommissionsPage,
@@ -34,8 +36,12 @@ export const router = createBrowserRouter([
       },
       {
         path: "contacts",
-        element: <ContactsPage />,
+        element: <ContactsLayout />,
         handle: { title: "Contacts", description: "Buyers, managers, and decision makers" },
+        children: [
+          { index: true, element: <ContactsPage /> },
+          { path: ":id", element: <ContactProfilePage /> },
+        ],
       },
       {
         path: "accounts",

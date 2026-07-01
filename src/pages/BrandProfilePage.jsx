@@ -15,7 +15,8 @@ import { ProductsTab } from "../features/brands/components/tabs/ProductsTab"
 import { AccountsTab } from "../features/brands/components/tabs/AccountsTab"
 import { BrandOrdersTab } from "../features/orders/components/BrandOrdersTab"
 import { useOrders } from "../features/orders/useOrders"
-import { ContactsTab } from "../features/brands/components/tabs/ContactsTab"
+import { BrandContactsTab } from "../features/contacts/components/BrandContactsTab"
+import { useContacts } from "../features/contacts/useContacts"
 import { NotesTab } from "../features/brands/components/tabs/NotesTab"
 
 export function BrandProfilePage() {
@@ -32,6 +33,7 @@ export function BrandProfilePage() {
     deleteProduct,
   } = useBrands()
   const { getOrdersByBrand } = useOrders()
+  const { getContactsByBrand } = useContacts()
 
   const brand = getBrand(id)
   const [activeTab, setActiveTab] = useState("overview")
@@ -60,7 +62,7 @@ export function BrandProfilePage() {
     { id: "products", label: "Products", count: brand.products.length },
     { id: "accounts", label: "Accounts", count: getActiveAccountCount(brand.brandName) },
     { id: "orders", label: "Orders", count: getOrdersByBrand(brand.id).length },
-    { id: "contacts", label: "Contacts" },
+    { id: "contacts", label: "Contacts", count: getContactsByBrand(brand.id).length },
     { id: "notes", label: "Notes", count: brand.noteEntries.length + (brand.notes ? 1 : 0) },
   ]
 
@@ -134,7 +136,7 @@ export function BrandProfilePage() {
         )}
         {activeTab === "accounts" && <AccountsTab brandName={brand.brandName} />}
         {activeTab === "orders" && <BrandOrdersTab brandId={brand.id} />}
-        {activeTab === "contacts" && <ContactsTab />}
+        {activeTab === "contacts" && <BrandContactsTab brandId={brand.id} />}
         {activeTab === "notes" && (
           <NotesTab
             brand={brand}

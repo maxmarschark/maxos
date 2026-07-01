@@ -10,7 +10,8 @@ import { Badge } from "../components/ui/Badge"
 import { formatCurrency } from "../lib/format"
 import { useOrders } from "../features/orders/useOrders"
 import { OverviewTab } from "../features/accounts/components/tabs/OverviewTab"
-import { ContactsTab } from "../features/accounts/components/tabs/ContactsTab"
+import { AccountContactsTab } from "../features/contacts/components/AccountContactsTab"
+import { useContacts } from "../features/contacts/useContacts"
 import { AccountOrdersTab } from "../features/orders/components/AccountOrdersTab"
 import { NotesTab } from "../features/accounts/components/tabs/NotesTab"
 import { TasksTab } from "../features/accounts/components/tabs/TasksTab"
@@ -29,6 +30,7 @@ export function AccountProfilePage() {
     deleteTask,
   } = useAccounts()
   const { getOrdersByAccount } = useOrders()
+  const { getContactsByAccount } = useContacts()
 
   const account = getAccount(id)
   const [activeTab, setActiveTab] = useState("overview")
@@ -56,7 +58,7 @@ export function AccountProfilePage() {
 
   const tabs = [
     { id: "overview", label: "Overview" },
-    { id: "contacts", label: "Contacts" },
+    { id: "contacts", label: "Contacts", count: getContactsByAccount(account.id).length },
     { id: "orders", label: "Orders", count: getOrdersByAccount(account.id).length },
     { id: "notes", label: "Notes", count: account.notes.length },
     { id: "tasks", label: "Tasks", count: account.tasks.filter((t) => !t.done).length },
@@ -128,7 +130,7 @@ export function AccountProfilePage() {
 
       <div>
         {activeTab === "overview" && <OverviewTab account={account} />}
-        {activeTab === "contacts" && <ContactsTab />}
+        {activeTab === "contacts" && <AccountContactsTab accountId={account.id} />}
         {activeTab === "orders" && <AccountOrdersTab accountId={account.id} />}
         {activeTab === "notes" && (
           <NotesTab

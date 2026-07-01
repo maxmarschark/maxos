@@ -15,7 +15,6 @@ function createModulePage(id, actionLabel) {
   }
 }
 
-export const ContactsPage = createModulePage("contacts", "Add Contact")
 export const DealsPage = createModulePage("deals", "New Deal")
 export const CalendarPage = createModulePage("calendar", "Schedule Event")
 export const CommissionsPage = createModulePage("commissions", "Record Payout")
