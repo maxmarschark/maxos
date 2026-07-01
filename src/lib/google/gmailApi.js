@@ -1,4 +1,5 @@
 import { INBOX_FETCH_LIMIT } from "../../features/gmail/constants"
+import { probeGmailProfileAccess } from "./workspaceDebug"
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 
@@ -96,28 +97,7 @@ async function fetchMessageMetadata(accessToken, messageId) {
 }
 
 export async function probeGmailAccess(accessToken) {
-  const response = await fetch(`${GMAIL_BASE}/messages?maxResults=1`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-
-  if (response.status === 401 || response.status === 403) {
-    return {
-      ok: false,
-      reason: "permission_needed",
-      error: `Gmail access denied (${response.status})`,
-    }
-  }
-
-  if (!response.ok) {
-    const message = await response.text()
-    return {
-      ok: false,
-      reason: "fetch_failed",
-      error: message || response.statusText,
-    }
-  }
-
-  return { ok: true }
+  return probeGmailProfileAccess(accessToken)
 }
 
 export async function fetchGmailInbox(accessToken, { maxResults = INBOX_FETCH_LIMIT } = {}) {

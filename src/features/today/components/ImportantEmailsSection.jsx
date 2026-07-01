@@ -46,7 +46,7 @@ export function ImportantEmailsSection() {
     return (
       <Card padding="md" className="flex min-h-[220px] flex-col">
         <SectionHeader title="Important Emails" />
-        <SectionEmpty>Connect Gmail in Settings to see actionable unread emails.</SectionEmpty>
+        <SectionEmpty>Connect Google Workspace in Settings to see actionable unread emails.</SectionEmpty>
       </Card>
     )
   }
@@ -55,7 +55,7 @@ export function ImportantEmailsSection() {
     return (
       <Card padding="md" className="flex min-h-[220px] flex-col">
         <SectionHeader title="Important Emails" />
-        <SectionEmpty>Gmail permission needed — connect in Settings.</SectionEmpty>
+        <SectionEmpty>Gmail permission needed — connect Google Workspace in Settings.</SectionEmpty>
       </Card>
     )
   }

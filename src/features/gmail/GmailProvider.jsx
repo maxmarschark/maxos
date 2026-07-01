@@ -5,6 +5,8 @@ import {
   getGoogleAccessToken,
   resolveGmailStatus,
 } from "../../lib/supabase/auth"
+import { isGmailEnabled } from "../../config/featureFlags"
+import { saveGoogleWorkspaceOptIn } from "../google-workspace/optIn"
 import { useAuth } from "../auth/useAuth"
 import { GMAIL_OPT_IN_KEY, GMAIL_STATUS } from "./constants"
 import { GmailContext } from "./gmail-context"
@@ -26,6 +28,14 @@ function saveOptIn(value) {
 }
 
 export function GmailProvider({ children }) {
+  if (!isGmailEnabled()) {
+    return children
+  }
+
+  return <GmailProviderInner>{children}</GmailProviderInner>
+}
+
+function GmailProviderInner({ children }) {
   const { user, configured } = useAuth()
   const [optIn, setOptIn] = useState(loadOptIn)
   const [emails, setEmails] = useState([])
@@ -96,6 +106,7 @@ export function GmailProvider({ children }) {
   const connect = useCallback(async () => {
     saveOptIn(true)
     setOptIn(true)
+    saveGoogleWorkspaceOptIn()
     const result = await requestGmailAccess()
     if (!result.ok) {
       setError(result.error ?? "Could not start Gmail authorization")

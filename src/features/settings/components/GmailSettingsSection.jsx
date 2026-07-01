@@ -25,22 +25,11 @@ function formatFetchedDate(iso) {
 export function GmailSettingsSection() {
   const { toast } = useToast()
   const { user, configured: authConfigured } = useAuth()
-  const { status, loading, lastFetchedAt, connect, refreshInbox, error } = useGmail()
+  const { status, loading, lastFetchedAt, refreshInbox, error } = useGmail()
 
   const googleAccount = getUserEmail(user)
   const statusLabel = statusLabels[status] ?? "Not connected"
   const isConnected = status === GMAIL_STATUS.CONNECTED
-
-  async function handleConnect() {
-    if (!authConfigured) {
-      toast("Configure Supabase and sign in with Google first", "error")
-      return
-    }
-    const result = await connect()
-    if (!result.ok) {
-      toast(result.error ?? "Could not connect Gmail", "error")
-    }
-  }
 
   async function handleRefresh() {
     const result = await refreshInbox()
@@ -49,7 +38,7 @@ export function GmailSettingsSection() {
       return
     }
     if (result.reason === "permission_needed") {
-      toast("Gmail permission required — click Connect Gmail", "error")
+      toast("Gmail permission required — click Connect Google Workspace in Calendar settings", "error")
       return
     }
     toast(error ?? "Could not refresh Gmail", "error")
@@ -88,19 +77,8 @@ export function GmailSettingsSection() {
           </p>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          {!isConnected && (
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Mail}
-              onClick={handleConnect}
-              disabled={loading}
-            >
-              Connect Gmail
-            </Button>
-          )}
-          {isConnected && (
+        {isConnected && (
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
               size="sm"
@@ -110,8 +88,8 @@ export function GmailSettingsSection() {
             >
               Refresh inbox
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>

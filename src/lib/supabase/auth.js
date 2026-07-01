@@ -1,9 +1,11 @@
 import { getSupabaseClient } from "./client"
 import { getAppRedirectUrl, getSettingsOAuthRedirectUrl } from "./oauthRedirect"
 import { fetchGoogleCalendarEvents, getCalendarWindow } from "../google/calendarApi"
-import { probeGmailAccess } from "../google/gmailApi"
-import { GOOGLE_CALENDAR_STATUS } from "../../features/google-calendar/constants"
+import { probeGmailProfileAccess, probeCalendarListAccess, runGoogleWorkspaceDebug } from "../google/workspaceDebug"
+import { GOOGLE_WORKSPACE_SCOPES } from "../google/workspaceScopes"
+import { GOOGLE_CALENDAR_SCOPE, GOOGLE_CALENDAR_STATUS } from "../../features/google-calendar/constants"
 import { GMAIL_STATUS } from "../../features/gmail/constants"
+import { isGmailEnabled } from "../../config/featureFlags"
 
 const LOG_PREFIX = "[Max OS Supabase]"
 
@@ -133,7 +135,7 @@ export async function connectGoogleCalendar() {
     provider: "google",
     options: {
       redirectTo,
-      scopes: "https://www.googleapis.com/auth/calendar.readonly",
+      scopes: GOOGLE_CALENDAR_SCOPE,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -149,33 +151,69 @@ export async function connectGoogleCalendar() {
   return { ok: true, redirectTo }
 }
 
-export async function connectGoogleGmail() {
+export function getGoogleWorkspaceOAuthOptions() {
+  if (!isGmailEnabled()) {
+    const redirectTo = getSettingsOAuthRedirectUrl()
+    return {
+      provider: "google",
+      redirectTo,
+      scopes: GOOGLE_CALENDAR_SCOPE,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
+      },
+    }
+  }
+
+  const redirectTo = getSettingsOAuthRedirectUrl()
+  return {
+    provider: "google",
+    redirectTo,
+    scopes: GOOGLE_WORKSPACE_SCOPES,
+    queryParams: {
+      access_type: "offline",
+      prompt: "consent",
+      include_granted_scopes: "true",
+    },
+  }
+}
+
+export async function connectGoogleWorkspace() {
+  if (!isGmailEnabled()) {
+    return connectGoogleCalendar()
+  }
+
   const supabase = getSupabaseClient()
   if (!supabase) {
     return { ok: false, error: "Supabase is not configured" }
   }
 
-  const redirectTo = getSettingsOAuthRedirectUrl()
-  console.info(`${LOG_PREFIX} Gmail OAuth redirectTo:`, redirectTo)
+  const oauthOptions = getGoogleWorkspaceOAuthOptions()
+  console.info(`${LOG_PREFIX} Google Workspace OAuth options:`, oauthOptions)
 
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
+    provider: oauthOptions.provider,
     options: {
-      redirectTo,
-      scopes: "https://www.googleapis.com/auth/gmail.readonly",
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
+      redirectTo: oauthOptions.redirectTo,
+      scopes: oauthOptions.scopes,
+      queryParams: oauthOptions.queryParams,
     },
   })
 
   if (error) {
-    console.warn(`${LOG_PREFIX} Gmail connect failed:`, error.message)
-    return { ok: false, error: error.message, redirectTo }
+    console.warn(`${LOG_PREFIX} Google Workspace connect failed:`, error.message)
+    return { ok: false, error: error.message, redirectTo: oauthOptions.redirectTo, oauthOptions }
   }
 
-  return { ok: true, redirectTo }
+  return { ok: true, redirectTo: oauthOptions.redirectTo, oauthOptions }
+}
+
+/** Gmail-only connect; requires GMAIL_ENABLED. */
+export async function connectGoogleGmail() {
+  if (!isGmailEnabled()) {
+    return { ok: false, error: "Gmail integration is not enabled" }
+  }
+  return connectGoogleWorkspace()
 }
 
 export async function getGoogleAccessToken() {
@@ -220,13 +258,23 @@ export async function resolveGoogleCalendarStatus({ optIn = false } = {}) {
   }
 
   const window = getCalendarWindow(1)
-  const probe = await fetchGoogleCalendarEvents(token, window)
+  const probe = await probeCalendarListAccess(token)
 
   if (probe.ok) {
     return { status: GOOGLE_CALENDAR_STATUS.CONNECTED, hasProviderToken: true }
   }
 
   if (probe.reason === "permission_needed") {
+    return { status: GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED, hasProviderToken: true }
+  }
+
+  // Fall back to events fetch if calendarList fails for non-permission reasons.
+  const eventsProbe = await fetchGoogleCalendarEvents(token, window)
+  if (eventsProbe.ok) {
+    return { status: GOOGLE_CALENDAR_STATUS.CONNECTED, hasProviderToken: true }
+  }
+
+  if (eventsProbe.reason === "permission_needed") {
     return { status: GOOGLE_CALENDAR_STATUS.PERMISSION_NEEDED, hasProviderToken: true }
   }
 
@@ -237,6 +285,10 @@ export async function resolveGoogleCalendarStatus({ optIn = false } = {}) {
  * Derives Gmail connection status from provider_token and a Gmail API probe.
  */
 export async function resolveGmailStatus({ optIn = false } = {}) {
+  if (!isGmailEnabled()) {
+    return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: false }
+  }
+
   const supabase = getSupabaseClient()
   if (!supabase) {
     return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: false }
@@ -258,7 +310,7 @@ export async function resolveGmailStatus({ optIn = false } = {}) {
     }
   }
 
-  const probe = await probeGmailAccess(token)
+  const probe = await probeGmailProfileAccess(token)
 
   if (probe.ok) {
     return { status: GMAIL_STATUS.CONNECTED, hasProviderToken: true }
@@ -269,6 +321,33 @@ export async function resolveGmailStatus({ optIn = false } = {}) {
   }
 
   return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: true }
+}
+
+/**
+ * Debug helper: probe Calendar + Gmail with the current provider token.
+ */
+export async function debugGoogleWorkspaceAccess() {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    return {
+      hasProviderToken: false,
+      calendar: { ok: false, error: "Supabase is not configured" },
+      gmail: { ok: false, error: "Supabase is not configured" },
+      oauthOptions: getGoogleWorkspaceOAuthOptions(),
+    }
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const token = session?.provider_token ?? (await getGoogleAccessToken())
+  const debug = await runGoogleWorkspaceDebug(token)
+
+  return {
+    ...debug,
+    oauthOptions: getGoogleWorkspaceOAuthOptions(),
+  }
 }
 
 export async function signOut() {

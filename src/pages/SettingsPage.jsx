@@ -9,7 +9,6 @@ import { useAuth } from "../features/auth/useAuth"
 import { useAccounts } from "../features/accounts/useAccounts"
 import { useCloudSync } from "../features/cloud/useCloudSync"
 import { GoogleCalendarSettingsSection } from "../features/settings/components/GoogleCalendarSettingsSection"
-import { GmailSettingsSection } from "../features/settings/components/GmailSettingsSection"
 import {
   APP_VERSION,
   estimateStorageUsageBytes,
@@ -206,8 +205,6 @@ export function SettingsPage() {
       </SettingsSection>
 
       <GoogleCalendarSettingsSection />
-
-      <GmailSettingsSection />
 
       <SettingsSection
         title="Data Backup"
