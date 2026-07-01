@@ -14,12 +14,8 @@ import { ContactsLayout } from "../features/contacts/ContactsLayout"
 import { ContactsPage } from "../pages/ContactsPage"
 import { ContactProfilePage } from "../pages/ContactProfilePage"
 import { CommissionsPage } from "../pages/CommissionsPage"
-import {
-  DealsPage,
-  CalendarPage,
-  ReportsPage,
-  SettingsPage,
-} from "../pages/modules"
+import { SettingsPage } from "../pages/SettingsPage"
+import { DealsPage, CalendarPage, ReportsPage } from "../pages/modules"
 
 export const router = createBrowserRouter([
   {
