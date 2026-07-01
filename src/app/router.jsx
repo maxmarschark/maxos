@@ -13,10 +13,10 @@ import { OrderDetailPage } from "../pages/OrderDetailPage"
 import { ContactsLayout } from "../features/contacts/ContactsLayout"
 import { ContactsPage } from "../pages/ContactsPage"
 import { ContactProfilePage } from "../pages/ContactProfilePage"
+import { CommissionsPage } from "../pages/CommissionsPage"
 import {
   DealsPage,
   CalendarPage,
-  CommissionsPage,
   ReportsPage,
   SettingsPage,
 } from "../pages/modules"

@@ -17,6 +17,5 @@ function createModulePage(id, actionLabel) {
 
 export const DealsPage = createModulePage("deals", "New Deal")
 export const CalendarPage = createModulePage("calendar", "Schedule Event")
-export const CommissionsPage = createModulePage("commissions", "Record Payout")
 export const ReportsPage = createModulePage("reports")
 export const SettingsPage = createModulePage("settings")

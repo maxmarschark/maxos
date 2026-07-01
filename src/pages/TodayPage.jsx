@@ -5,21 +5,26 @@ import { TasksPanel } from "../components/today/TasksPanel"
 import { AIPrioritiesPanel } from "../components/today/AIPrioritiesPanel"
 import { RoutePanel } from "../components/today/RoutePanel"
 import { useOrders } from "../features/orders/useOrders"
+import { useCommissions } from "../features/commissions/useCommissions"
 import { computeDashboardMetrics } from "../features/orders/utils"
+import { computeDashboardPendingCommissions } from "../features/commissions/utils"
 
 export function TodayPage() {
   const { rawOrders } = useOrders()
+  const { commissions } = useCommissions()
   const { greeting, subtitle, tasks, aiPriorities, suggestedRoute } = todayData
 
   const metrics = useMemo(() => {
     const orderMetrics = computeDashboardMetrics(rawOrders)
+    const pendingCommissions = computeDashboardPendingCommissions(commissions)
+
     return {
       revenueToday: todayData.metrics.revenueToday,
       collectionsDue: orderMetrics.collectionsDue,
       openOrders: orderMetrics.openOrders,
-      pendingCommissions: orderMetrics.pendingCommissions,
+      pendingCommissions,
     }
-  }, [rawOrders])
+  }, [rawOrders, commissions])
 
   return (
     <div className="space-y-6">
