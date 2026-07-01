@@ -10,6 +10,7 @@ import {
 import { SortableHead } from "../../../components/ui/SortableTable"
 import { Badge } from "../../../components/ui/Badge"
 import { Button } from "../../../components/ui/Button"
+import { EntityLinks } from "../../../components/ui/EntityLink"
 import { formatDate } from "../../../lib/format"
 import { PRIORITY_VARIANTS, STATUS_VARIANTS } from "../constants"
 import { cn } from "../../../lib/cn"
@@ -126,8 +127,31 @@ export function TasksTable({
                   "—"
                 )}
               </TableCell>
-              <TableCell className="max-w-[180px] truncate text-zinc-500">
-                {task.linkLabel || "—"}
+              <TableCell className="max-w-[220px]">
+                <EntityLinks
+                  items={[
+                    {
+                      key: "account",
+                      to: task.accountId ? `/accounts/${task.accountId}` : null,
+                      label: task.accountName,
+                    },
+                    {
+                      key: "contact",
+                      to: task.contactId ? `/contacts/${task.contactId}` : null,
+                      label: task.contactName,
+                    },
+                    {
+                      key: "brand",
+                      to: task.brandId ? `/brands/${task.brandId}` : null,
+                      label: task.brandName,
+                    },
+                    {
+                      key: "order",
+                      to: task.orderId ? `/orders/${task.orderId}` : null,
+                      label: task.orderNumber ? `#${task.orderNumber}` : "",
+                    },
+                  ]}
+                />
               </TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">

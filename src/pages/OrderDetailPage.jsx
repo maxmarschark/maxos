@@ -1,12 +1,15 @@
 import { useState } from "react"
-import { useNavigate, useParams, Link } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useOrders } from "../features/orders/useOrders"
+import { useCommissions } from "../features/commissions/useCommissions"
+import { useContacts } from "../features/contacts/useContacts"
 import { OrderFormModal } from "../features/orders/components/OrderFormModal"
 import { DeleteOrderModal } from "../features/orders/components/DeleteOrderModal"
 import { Button } from "../components/ui/Button"
 import { Badge } from "../components/ui/Badge"
 import { Card } from "../components/ui/Card"
+import { EntityLink } from "../components/ui/EntityLink"
 import {
   formatCurrency,
   formatCurrencyDetailed,
@@ -17,6 +20,11 @@ import {
   ORDER_STATUS_VARIANTS,
   PAYMENT_STATUS_VARIANTS,
 } from "../features/orders/constants"
+import { STATUS_VARIANTS as COMMISSION_STATUS_VARIANTS } from "../features/commissions/constants"
+import {
+  getPrimaryContactForOrder,
+  getCommissionForOrder,
+} from "../lib/relationships"
 
 function DetailRow({ label, children }) {
   return (
@@ -32,6 +40,8 @@ export function OrderDetailPage() {
   const navigate = useNavigate()
   const { getOrder, updateOrder, deleteOrder, accounts, brands, refreshReferences } =
     useOrders()
+  const { contacts } = useContacts()
+  const { commissions } = useCommissions()
 
   const order = getOrder(id)
   const [editOpen, setEditOpen] = useState(false)
@@ -63,6 +73,9 @@ export function OrderDetailPage() {
     refreshReferences()
     setEditOpen(true)
   }
+
+  const primaryContact = getPrimaryContactForOrder(order, contacts)
+  const commissionRecord = getCommissionForOrder(order.id, commissions)
 
   return (
     <div className="space-y-6">
@@ -110,20 +123,23 @@ export function OrderDetailPage() {
           <h2 className="text-sm font-medium text-zinc-300">Order Details</h2>
           <dl className="space-y-3">
             <DetailRow label="Account">
-              <Link
-                to={`/accounts/${order.accountId}`}
-                className="text-indigo-400 transition-colors hover:text-indigo-300"
-              >
+              <EntityLink to={`/accounts/${order.accountId}`}>
                 {order.accountName}
-              </Link>
+              </EntityLink>
             </DetailRow>
             <DetailRow label="Brand">
-              <Link
-                to={`/brands/${order.brandId}`}
-                className="text-indigo-400 transition-colors hover:text-indigo-300"
-              >
+              <EntityLink to={`/brands/${order.brandId}`}>
                 {order.brandName}
-              </Link>
+              </EntityLink>
+            </DetailRow>
+            <DetailRow label="Primary Contact">
+              {primaryContact ? (
+                <EntityLink to={`/contacts/${primaryContact.id}`}>
+                  {primaryContact.fullName}
+                </EntityLink>
+              ) : (
+                "—"
+              )}
             </DetailRow>
             <DetailRow label="Order Date">{formatDate(order.orderDate)}</DetailRow>
             <DetailRow label="Payment Due Date">
@@ -145,6 +161,21 @@ export function OrderDetailPage() {
               <span className="font-medium text-emerald-400">
                 {formatCurrencyDetailed(order.commissionAmount)}
               </span>
+            </DetailRow>
+            <DetailRow label="Commission Record">
+              {commissionRecord ? (
+                <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <Badge
+                    variant={COMMISSION_STATUS_VARIANTS[commissionRecord.status] ?? "default"}
+                    className="normal-case tracking-normal"
+                  >
+                    {commissionRecord.status}
+                  </Badge>
+                  <EntityLink to="/commissions">View in Commissions</EntityLink>
+                </div>
+              ) : (
+                "—"
+              )}
             </DetailRow>
           </dl>
         </Card>

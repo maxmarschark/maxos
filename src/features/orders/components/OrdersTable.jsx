@@ -10,6 +10,7 @@ import {
 import { SortableHead } from "../../../components/ui/SortableTable"
 import { Badge } from "../../../components/ui/Badge"
 import { Button } from "../../../components/ui/Button"
+import { EntityLink } from "../../../components/ui/EntityLink"
 import {
   formatCurrency,
   formatCurrencyDetailed,
@@ -84,8 +85,22 @@ export function OrdersTable({
             onClick={onRowClick ? () => onRowClick(order.id) : undefined}
           >
             <TableCell className="font-medium text-zinc-200">#{order.orderNumber}</TableCell>
-            <TableCell>{order.accountName}</TableCell>
-            <TableCell>{order.brandName}</TableCell>
+            <TableCell>
+              <EntityLink
+                to={`/accounts/${order.accountId}`}
+                onClick={onRowClick ? (e) => e.stopPropagation() : undefined}
+              >
+                {order.accountName}
+              </EntityLink>
+            </TableCell>
+            <TableCell>
+              <EntityLink
+                to={`/brands/${order.brandId}`}
+                onClick={onRowClick ? (e) => e.stopPropagation() : undefined}
+              >
+                {order.brandName}
+              </EntityLink>
+            </TableCell>
             <TableCell>{formatDate(order.orderDate)}</TableCell>
             <TableCell className="text-right">{formatCurrency(order.orderAmount)}</TableCell>
             <TableCell className="text-right">{formatPercent(order.commissionPercent)}</TableCell>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useNavigate, useParams, Link } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useContacts } from "../features/contacts/useContacts"
 import { useOrders } from "../features/orders/useOrders"
@@ -12,7 +12,11 @@ import { getTodayISO } from "../features/today/utils"
 import { Button } from "../components/ui/Button"
 import { Badge } from "../components/ui/Badge"
 import { Card } from "../components/ui/Card"
+import { EntityLink } from "../components/ui/EntityLink"
 import { formatDate } from "../lib/format"
+import { ContactOrdersSection } from "../features/contacts/components/ContactOrdersSection"
+import { ContactTasksSection } from "../features/contacts/components/ContactTasksSection"
+import { ContactFollowUpHistory } from "../features/contacts/components/ContactFollowUpHistory"
 import { TYPE_VARIANTS } from "../features/contacts/constants"
 import { loadFromStorage } from "../lib/storage"
 import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
@@ -34,7 +38,7 @@ export function ContactProfilePage() {
   const { getContact, updateContact, deleteContact, accounts, brands, refreshReferences } =
     useContacts()
   const { orders } = useOrders()
-  const { addTask } = useTasks()
+  const { addTask, tasks } = useTasks()
   const { toast } = useToast()
   const allBrands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
 
@@ -175,12 +179,9 @@ export function ContactProfilePage() {
           {contact.accountId ? (
             <dl className="space-y-3">
               <DetailRow label="Account">
-                <Link
-                  to={`/accounts/${contact.accountId}`}
-                  className="text-indigo-400 transition-colors hover:text-indigo-300"
-                >
+                <EntityLink to={`/accounts/${contact.accountId}`}>
                   {contact.accountName}
-                </Link>
+                </EntityLink>
               </DetailRow>
             </dl>
           ) : (
@@ -199,12 +200,9 @@ export function ContactProfilePage() {
           {contact.brandId ? (
             <dl className="space-y-3">
               <DetailRow label="Brand">
-                <Link
-                  to={`/brands/${contact.brandId}`}
-                  className="text-indigo-400 transition-colors hover:text-indigo-300"
-                >
+                <EntityLink to={`/brands/${contact.brandId}`}>
                   {contact.brandName}
-                </Link>
+                </EntityLink>
               </DetailRow>
             </dl>
           ) : (
@@ -219,6 +217,21 @@ export function ContactProfilePage() {
           </Card>
         )}
       </div>
+
+      <Card padding="md" className="space-y-4">
+        <h2 className="text-sm font-medium text-zinc-300">Orders Involved</h2>
+        <ContactOrdersSection contact={contact} orders={orders} />
+      </Card>
+
+      <Card padding="md" className="space-y-4">
+        <h2 className="text-sm font-medium text-zinc-300">Open Tasks</h2>
+        <ContactTasksSection contactId={contact.id} tasks={tasks} />
+      </Card>
+
+      <Card padding="md" className="space-y-4">
+        <h2 className="text-sm font-medium text-zinc-300">Follow-up History</h2>
+        <ContactFollowUpHistory contact={contact} tasks={tasks} />
+      </Card>
 
       <ContactFormModal
         open={editOpen}

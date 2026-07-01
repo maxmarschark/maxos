@@ -13,28 +13,38 @@ import { OverviewTab } from "../features/accounts/components/tabs/OverviewTab"
 import { AccountContactsTab } from "../features/contacts/components/AccountContactsTab"
 import { useContacts } from "../features/contacts/useContacts"
 import { AccountOrdersTab } from "../features/orders/components/AccountOrdersTab"
-import { NotesTab } from "../features/accounts/components/tabs/NotesTab"
 import { TasksTab } from "../features/accounts/components/tabs/TasksTab"
+import { AccountBrandsTab } from "../features/accounts/components/tabs/AccountBrandsTab"
+import { AccountCommissionsTab } from "../features/accounts/components/tabs/AccountCommissionsTab"
+import { AccountActivityTab } from "../features/accounts/components/tabs/AccountActivityTab"
 import { useTasks } from "../features/tasks/useTasks"
+import { useCommissions } from "../features/commissions/useCommissions"
 import { loadFromStorage } from "../lib/storage"
 import { BRANDS_STORAGE_KEY } from "../features/brands/constants"
 import { SEED_BRANDS } from "../features/brands/seed"
+import { buildRelationshipContext, getAccountBrands } from "../lib/relationships"
 
 export function AccountProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const {
-    getAccount,
-    updateAccount,
-    deleteAccount,
-    addNote,
-    deleteNote,
-    accounts,
-  } = useAccounts()
+  const { getAccount, updateAccount, deleteAccount, accounts } = useAccounts()
   const { getOrdersByAccount, orders } = useOrders()
   const { getContactsByAccount, contacts } = useContacts()
-  const { getTasksByAccount } = useTasks()
+  const { getTasksByAccount, tasks } = useTasks()
+  const { commissions } = useCommissions()
   const brands = useMemo(() => loadFromStorage(BRANDS_STORAGE_KEY, SEED_BRANDS), [])
+  const relationshipCtx = useMemo(
+    () =>
+      buildRelationshipContext({
+        accounts,
+        contacts,
+        orders,
+        commissions,
+        tasks,
+        brands,
+      }),
+    [accounts, contacts, orders, commissions, tasks, brands]
+  )
 
   const account = getAccount(id)
   const [activeTab, setActiveTab] = useState("overview")
@@ -64,8 +74,10 @@ export function AccountProfilePage() {
     { id: "overview", label: "Overview" },
     { id: "contacts", label: "Contacts", count: getContactsByAccount(account.id).length },
     { id: "orders", label: "Orders", count: getOrdersByAccount(account.id).length },
-    { id: "notes", label: "Notes", count: account.notes.length },
     { id: "tasks", label: "Tasks", count: getTasksByAccount(account.id).filter((t) => t.status !== "Complete").length },
+    { id: "brands", label: "Brands Carried", count: getAccountBrands(account, brands).length },
+    { id: "commissions", label: "Commission Generated" },
+    { id: "activity", label: "Activity Timeline" },
   ]
 
   function handleDelete() {
@@ -133,16 +145,9 @@ export function AccountProfilePage() {
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       <div>
-        {activeTab === "overview" && <OverviewTab account={account} />}
+        {activeTab === "overview" && <OverviewTab account={account} brands={brands} />}
         {activeTab === "contacts" && <AccountContactsTab accountId={account.id} />}
         {activeTab === "orders" && <AccountOrdersTab accountId={account.id} />}
-        {activeTab === "notes" && (
-          <NotesTab
-            account={account}
-            onAddNote={(content) => addNote(account.id, content)}
-            onDeleteNote={(noteId) => deleteNote(account.id, noteId)}
-          />
-        )}
         {activeTab === "tasks" && (
           <TasksTab
             account={account}
@@ -151,6 +156,17 @@ export function AccountProfilePage() {
             brands={brands}
             orders={orders}
           />
+        )}
+        {activeTab === "brands" && <AccountBrandsTab account={account} brands={brands} />}
+        {activeTab === "commissions" && (
+          <AccountCommissionsTab
+            accountId={account.id}
+            orders={orders}
+            commissions={commissions}
+          />
+        )}
+        {activeTab === "activity" && (
+          <AccountActivityTab accountId={account.id} ctx={relationshipCtx} />
         )}
       </div>
 

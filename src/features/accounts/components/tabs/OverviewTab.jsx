@@ -9,7 +9,9 @@ import {
 } from "lucide-react"
 import { Card } from "../../../../components/ui/Card"
 import { Badge } from "../../../../components/ui/Badge"
+import { EntityLink } from "../../../../components/ui/EntityLink"
 import { formatCurrency, formatDate } from "../../../../lib/format"
+import { getAccountBrands } from "../../../../lib/relationships"
 
 function InfoRow({ icon: Icon, label, value, href }) {
   if (!value) return null
@@ -54,7 +56,7 @@ function StatCard({ icon: Icon, label, value, accent }) {
   )
 }
 
-export function OverviewTab({ account }) {
+export function OverviewTab({ account, brands = [] }) {
   const websiteHref = account.website
     ? account.website.startsWith("http")
       ? account.website
@@ -112,11 +114,19 @@ export function OverviewTab({ account }) {
         <h3 className="mb-3 text-sm font-semibold text-zinc-100">Brands Carried</h3>
         {account.brandsCarried.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {account.brandsCarried.map((brand) => (
-              <Badge key={brand} variant="primary" className="normal-case tracking-normal">
-                {brand}
-              </Badge>
-            ))}
+            {getAccountBrands(account, brands).map((brand) =>
+              brand.id ? (
+                <EntityLink key={brand.name} to={`/brands/${brand.id}`}>
+                  <Badge variant="primary" className="normal-case tracking-normal">
+                    {brand.name}
+                  </Badge>
+                </EntityLink>
+              ) : (
+                <Badge key={brand.name} variant="primary" className="normal-case tracking-normal">
+                  {brand.name}
+                </Badge>
+              )
+            )}
           </div>
         ) : (
           <p className="text-sm text-zinc-600">No brands recorded yet.</p>

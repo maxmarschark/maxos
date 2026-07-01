@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useBrands } from "../features/brands/useBrands"
@@ -15,6 +15,8 @@ import { ProductsTab } from "../features/brands/components/tabs/ProductsTab"
 import { AccountsTab } from "../features/brands/components/tabs/AccountsTab"
 import { BrandOrdersTab } from "../features/orders/components/BrandOrdersTab"
 import { useOrders } from "../features/orders/useOrders"
+import { useCommissions } from "../features/commissions/useCommissions"
+import { getBrandMetrics } from "../lib/relationships"
 import { BrandContactsTab } from "../features/contacts/components/BrandContactsTab"
 import { useContacts } from "../features/contacts/useContacts"
 import { NotesTab } from "../features/brands/components/tabs/NotesTab"
@@ -32,10 +34,15 @@ export function BrandProfilePage() {
     updateProduct,
     deleteProduct,
   } = useBrands()
-  const { getOrdersByBrand } = useOrders()
+  const { getOrdersByBrand, orders } = useOrders()
+  const { commissions } = useCommissions()
   const { getContactsByBrand } = useContacts()
 
   const brand = getBrand(id)
+  const metrics = useMemo(
+    () => (brand ? getBrandMetrics(brand.id, orders, commissions) : null),
+    [brand, orders, commissions]
+  )
   const [activeTab, setActiveTab] = useState("overview")
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -125,7 +132,7 @@ export function BrandProfilePage() {
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       <div>
-        {activeTab === "overview" && <OverviewTab brand={brand} />}
+        {activeTab === "overview" && <OverviewTab brand={brand} metrics={metrics} />}
         {activeTab === "products" && (
           <ProductsTab
             brand={brand}

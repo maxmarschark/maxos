@@ -1,5 +1,5 @@
 import { formatCurrency } from "../../lib/format"
-import { getContactName } from "../contacts/utils"
+import { buildActivityTimeline, buildRelationshipContext } from "../../lib/relationships"
 
 export function getTodayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -302,62 +302,21 @@ export function buildKpis({ orders, contacts, accounts, collections, todayISO })
   }
 }
 
-export function buildActivityFeed({ orders, contacts, accounts, commissions }) {
-  const events = []
-
-  orders.forEach((order) => {
-    if (order.createdAt) {
-      events.push({
-        id: `order-${order.id}-created`,
-        type: "order_created",
-        label: `Order #${order.orderNumber} created`,
-        detail: `${order.accountName} · ${order.brandName}`,
-        timestamp: order.createdAt,
-        link: `/orders/${order.id}`,
-      })
-    }
+export function buildActivityFeed({
+  orders,
+  contacts,
+  accounts,
+  commissions,
+  tasks = [],
+  brands = [],
+}) {
+  const ctx = buildRelationshipContext({
+    accounts,
+    contacts,
+    orders,
+    commissions,
+    tasks,
+    brands,
   })
-
-  contacts.forEach((contact) => {
-    if (contact.createdAt) {
-      events.push({
-        id: `contact-${contact.id}-created`,
-        type: "contact_added",
-        label: `${getContactName(contact)} added`,
-        detail: contact.companyDisplay,
-        timestamp: contact.createdAt,
-        link: `/contacts/${contact.id}`,
-      })
-    }
-  })
-
-  accounts.forEach((account) => {
-    if (account.updatedAt && account.updatedAt !== account.createdAt) {
-      events.push({
-        id: `account-${account.id}-updated`,
-        type: "account_edited",
-        label: `${account.businessName} updated`,
-        detail: account.city ? `${account.city}, ${account.state}` : "",
-        timestamp: account.updatedAt,
-        link: `/accounts/${account.id}`,
-      })
-    }
-  })
-
-  commissions.forEach((c) => {
-    if (c.status === "Paid" && c.paidDate) {
-      events.push({
-        id: `commission-${c.orderId}-paid`,
-        type: "commission_paid",
-        label: `Commission paid on #${c.orderNumber}`,
-        detail: `${c.accountName} · ${formatCurrency(c.commissionAmount)}`,
-        timestamp: `${c.paidDate}T12:00:00.000Z`,
-        link: `/commissions`,
-      })
-    }
-  })
-
-  return events
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 20)
+  return buildActivityTimeline(ctx, null, 20)
 }

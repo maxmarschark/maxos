@@ -47,7 +47,7 @@ function StatCard({ icon: Icon, label, value, accent }) {
   )
 }
 
-export function OverviewTab({ brand }) {
+export function OverviewTab({ brand, metrics }) {
   const websiteHref = brand.website
     ? brand.website.startsWith("http")
       ? brand.website
@@ -59,21 +59,21 @@ export function OverviewTab({ brand }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
           icon={DollarSign}
-          label="Monthly Sales"
-          value={formatCurrency(brand.monthlySales)}
+          label="Total Sales"
+          value={formatCurrency(metrics?.totalSales ?? 0)}
           accent="emerald"
         />
         <StatCard
-          icon={Percent}
-          label="Default Commission"
-          value={formatPercent(brand.commissionDefault)}
-          accent="indigo"
+          icon={DollarSign}
+          label="Total Commission"
+          value={formatCurrency(metrics?.totalCommission ?? 0)}
+          accent="amber"
         />
         <StatCard
           icon={User}
           label="Active Accounts"
           value={getActiveAccountCount(brand.brandName)}
-          accent="amber"
+          accent="indigo"
         />
       </div>
 

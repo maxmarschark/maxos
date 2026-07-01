@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Package, UserPlus, Building2, DollarSign } from "lucide-react"
+import { Package, UserPlus, Building2, DollarSign, CheckSquare, Phone, StickyNote, Pencil, Tag } from "lucide-react"
 import { Card } from "../../../components/ui/Card"
 import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { SectionHeader } from "./SectionHeader"
@@ -9,10 +9,17 @@ import { ViewAllToggle } from "./ViewAllToggle"
 const LIMIT = 5
 
 const typeIcons = {
+  account_created: Building2,
+  account_edited: Pencil,
   order_created: Package,
+  order_updated: Package,
   contact_added: UserPlus,
-  account_edited: Building2,
   commission_paid: DollarSign,
+  task_created: CheckSquare,
+  task_completed: CheckSquare,
+  follow_up_logged: Phone,
+  note_added: StickyNote,
+  brand_created: Tag,
 }
 
 function formatActivityTime(timestamp) {
