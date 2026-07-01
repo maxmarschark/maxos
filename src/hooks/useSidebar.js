@@ -1,25 +1,18 @@
 import { useCallback, useEffect, useState } from "react"
+import { loadFromStorage, saveToStorage } from "../lib/storage"
 
 const STORAGE_KEY = "max-os-sidebar-collapsed"
 
 export function useSidebar() {
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "true"
-    } catch {
-      return false
-    }
-  })
+  const [collapsed, setCollapsed] = useState(() =>
+    loadFromStorage(STORAGE_KEY, false)
+  )
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev
-      try {
-        localStorage.setItem(STORAGE_KEY, String(next))
-      } catch {
-        /* ignore */
-      }
+      saveToStorage(STORAGE_KEY, next)
       return next
     })
   }, [])

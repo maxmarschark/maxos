@@ -1,34 +1,18 @@
-import { Modal } from "../../../components/ui/Modal"
-import { Button } from "../../../components/ui/Button"
+import { ConfirmModal } from "../../../components/ui/ConfirmModal"
 
 export function DeleteAccountModal({ open, onClose, onConfirm, accountName }) {
   return (
-    <Modal
+    <ConfirmModal
       open={open}
       onClose={onClose}
+      onConfirm={onConfirm}
       title="Delete Account"
-      description={`Are you sure you want to delete "${accountName}"? This action cannot be undone.`}
-      size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              onConfirm()
-              onClose()
-            }}
-          >
-            Delete Account
-          </Button>
-        </>
-      }
+      description={`Are you sure you want to delete "${accountName}"?`}
+      confirmLabel="Delete Account"
     >
       <p className="text-sm text-zinc-500">
         All notes and tasks associated with this account will also be removed.
       </p>
-    </Modal>
+    </ConfirmModal>
   )
 }

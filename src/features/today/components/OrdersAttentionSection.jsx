@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Card } from "../../../components/ui/Card"
+import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { Badge } from "../../../components/ui/Badge"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
@@ -20,10 +21,10 @@ export function OrdersAttentionSection({ ordersFlat }) {
   const visible = expanded ? ordersFlat : ordersFlat.slice(0, LIMIT)
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="flex min-h-[220px] flex-col">
       <SectionHeader title="Orders Requiring Attention" count={ordersFlat.length} />
       {ordersFlat.length === 0 ? (
-        <p className="text-sm text-zinc-600">All orders are on track.</p>
+        <SectionEmpty>All orders are on track.</SectionEmpty>
       ) : (
         <>
           <div className="space-y-1.5">

@@ -1,34 +1,18 @@
-import { Modal } from "../../../components/ui/Modal"
-import { Button } from "../../../components/ui/Button"
+import { ConfirmModal } from "../../../components/ui/ConfirmModal"
 
 export function DeleteBrandModal({ open, onClose, onConfirm, brandName }) {
   return (
-    <Modal
+    <ConfirmModal
       open={open}
       onClose={onClose}
+      onConfirm={onConfirm}
       title="Delete Brand"
-      description={`Are you sure you want to delete "${brandName}"? This action cannot be undone.`}
-      size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              onConfirm()
-              onClose()
-            }}
-          >
-            Delete Brand
-          </Button>
-        </>
-      }
+      description={`Are you sure you want to delete "${brandName}"?`}
+      confirmLabel="Delete Brand"
     >
       <p className="text-sm text-zinc-500">
         All products and notes associated with this brand will also be removed.
       </p>
-    </Modal>
+    </ConfirmModal>
   )
 }

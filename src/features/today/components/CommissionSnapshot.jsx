@@ -1,4 +1,5 @@
 import { Card } from "../../../components/ui/Card"
+import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { SectionHeader } from "./SectionHeader"
 import { formatCurrency } from "../../../lib/format"
 import { cn } from "../../../lib/cn"
@@ -27,10 +28,10 @@ export function CommissionSnapshot({ snapshot }) {
     snapshot.outstanding.count > 0
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="flex min-h-[140px] flex-col">
       <SectionHeader title="Commission Snapshot" />
       {!hasData ? (
-        <p className="text-sm text-zinc-600">No commission activity yet.</p>
+        <SectionEmpty>No commission activity yet.</SectionEmpty>
       ) : (
         <div className="grid grid-cols-3 divide-x divide-zinc-800/80">
           <Stat label="Pending" value={snapshot.pending.total} accent="amber" />

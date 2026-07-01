@@ -14,10 +14,16 @@ import { SearchInput } from "../components/ui/SearchInput"
 import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
+import { PageHeader } from "../components/ui/PageHeader"
+import { Pagination } from "../components/ui/Pagination"
+import { useToast } from "../components/ui/useToast"
+import { usePagination } from "../hooks/usePagination"
+import { useTableSort } from "../hooks/useTableSort"
+import { sortRows } from "../lib/tableSort"
 import { CONTACT_TYPES } from "../features/contacts/constants"
 import { downloadContactsCsv, getExportFileName } from "../features/contacts/export"
 
-function filterAndSort(contacts, { search, typeFilter, sortField, sortDir }) {
+function filterContacts(contacts, { search, typeFilter }) {
   let result = [...contacts]
 
   if (search.trim()) {
@@ -38,28 +44,17 @@ function filterAndSort(contacts, { search, typeFilter, sortField, sortDir }) {
     result = result.filter((c) => c.type === typeFilter)
   }
 
-  result.sort((a, b) => {
-    let aVal = a[sortField]
-    let bVal = b[sortField]
-
-    if (sortField === "lastContactDate" || sortField === "nextFollowUpDate") {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    } else {
-      aVal = String(aVal ?? "").toLowerCase()
-      bVal = String(bVal ?? "").toLowerCase()
-    }
-
-    if (aVal < bVal) return sortDir === "asc" ? -1 : 1
-    if (aVal > bVal) return sortDir === "asc" ? 1 : -1
-    return 0
-  })
-
   return result
+}
+
+const SORT_FIELD_TYPES = {
+  lastContactDate: "date",
+  nextFollowUpDate: "date",
 }
 
 export function ContactsPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const {
     contacts,
     importBatches,
@@ -77,8 +72,8 @@ export function ContactsPage() {
 
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
-  const [sortField, setSortField] = useState("fullName")
-  const [sortDir, setSortDir] = useState("asc")
+  const { sortField, sortDir, handleSort } = useTableSort("fullName", "asc")
+  const [pageSize, setPageSize] = useState(25)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
 
   const [formOpen, setFormOpen] = useState(false)
@@ -88,25 +83,18 @@ export function ContactsPage() {
   const [editingContact, setEditingContact] = useState(null)
   const [deletingContact, setDeletingContact] = useState(null)
 
-  const filtered = useMemo(
-    () => filterAndSort(contacts, { search, typeFilter, sortField, sortDir }),
-    [contacts, search, typeFilter, sortField, sortDir]
-  )
+  const filtered = useMemo(() => {
+    const rows = filterContacts(contacts, { search, typeFilter })
+    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+  }, [contacts, search, typeFilter, sortField, sortDir])
+
+  const pagination = usePagination(filtered, pageSize)
 
   const filteredIds = useMemo(() => filtered.map((c) => c.id), [filtered])
   const allSelected =
     filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id))
   const someSelected = filteredIds.some((id) => selectedIds.has(id))
   const selectedCount = selectedIds.size
-
-  function handleSort(field) {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortDir("asc")
-    }
-  }
 
   function handleToggleSelect(id) {
     setSelectedIds((prev) => {
@@ -151,16 +139,21 @@ export function ContactsPage() {
   }
 
   function handleFormSubmit(data) {
+    const name = `${data.firstName} ${data.lastName}`.trim()
     if (editingContact) {
       updateContact(editingContact.id, data)
+      toast(`Updated ${name}`)
     } else {
       addContact(data)
+      toast(`Added ${name}`)
     }
   }
 
   function handleBulkDelete() {
+    const count = selectedIds.size
     deleteContacts([...selectedIds])
     setSelectedIds(new Set())
+    toast(`Deleted ${count} contact${count !== 1 ? "s" : ""}`)
   }
 
   function handleExport() {
@@ -170,41 +163,44 @@ export function ContactsPage() {
   function handleClearAll() {
     clearAllContacts()
     setSelectedIds(new Set())
+    toast("All contacts cleared")
+  }
+
+  function handleDeleteContact() {
+    deleteContact(deletingContact.id)
+    toast(`Deleted ${deletingContact.fullName}`)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-            Contacts
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {contacts.length} contact{contacts.length !== 1 ? "s" : ""} tracked
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedCount > 0 && (
-            <Button
-              variant="danger"
-              size="sm"
-              icon={Trash2}
-              onClick={() => setBulkDeleteOpen(true)}
-            >
-              Delete {selectedCount} Selected
+      <PageHeader
+        icon={Users}
+        title="Contacts"
+        description={`${contacts.length} contact${contacts.length !== 1 ? "s" : ""} tracked`}
+        actions={
+          <>
+            {selectedCount > 0 && (
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                Delete {selectedCount} Selected
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" icon={Download} onClick={handleExport}>
+              Export CSV
             </Button>
-          )}
-          <Button variant="secondary" size="sm" icon={Download} onClick={handleExport}>
-            Export CSV
-          </Button>
-          <Button variant="secondary" size="sm" icon={Upload} onClick={handleImportOpen}>
-            Import CSV
-          </Button>
-          <Button variant="primary" size="sm" icon={UserPlus} onClick={handleAdd}>
-            Add Contact
-          </Button>
-        </div>
-      </div>
+            <Button variant="secondary" size="sm" icon={Upload} onClick={handleImportOpen}>
+              Import CSV
+            </Button>
+            <Button variant="primary" size="sm" icon={UserPlus} onClick={handleAdd}>
+              Add Contact
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchInput
@@ -242,21 +238,33 @@ export function ContactsPage() {
           />
         </Card>
       ) : (
-        <ContactsTable
-          contacts={filtered}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={handleSort}
-          onRowClick={(id) => navigate(`/contacts/${id}`)}
-          onEdit={handleEdit}
-          onDelete={setDeletingContact}
-          selectable
-          selectedIds={selectedIds}
-          onToggleSelect={handleToggleSelect}
-          onToggleSelectAll={handleToggleSelectAll}
-          allSelected={allSelected}
-          someSelected={someSelected}
-        />
+        <>
+          <ContactsTable
+            contacts={pagination.paginatedItems}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={handleSort}
+            onRowClick={(id) => navigate(`/contacts/${id}`)}
+            onEdit={handleEdit}
+            onDelete={setDeletingContact}
+            selectable
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            allSelected={allSelected}
+            someSelected={someSelected}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            rangeStart={pagination.rangeStart}
+            rangeEnd={pagination.rangeEnd}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       <ImportHistoryPanel batches={importBatches} onDeleteBatch={deleteImportBatch} />
@@ -293,7 +301,7 @@ export function ContactsPage() {
       <DeleteContactModal
         open={Boolean(deletingContact)}
         onClose={() => setDeletingContact(null)}
-        onConfirm={() => deleteContact(deletingContact.id)}
+        onConfirm={handleDeleteContact}
         contactName={deletingContact?.fullName ?? ""}
       />
 

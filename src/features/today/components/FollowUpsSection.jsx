@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { CheckCircle2 } from "lucide-react"
 import { Card } from "../../../components/ui/Card"
+import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { Badge } from "../../../components/ui/Badge"
 import { Button } from "../../../components/ui/Button"
 import { SectionHeader } from "./SectionHeader"
@@ -45,10 +46,10 @@ export function FollowUpsSection({ followUpsFlat, onCompleteFollowUp }) {
   const visible = expanded ? followUpsFlat : followUpsFlat.slice(0, LIMIT)
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="flex min-h-[220px] flex-col">
       <SectionHeader title="Follow-Ups Due" count={followUpsFlat.length} />
       {followUpsFlat.length === 0 ? (
-        <p className="text-sm text-zinc-600">No follow-ups due.</p>
+        <SectionEmpty>No follow-ups due.</SectionEmpty>
       ) : (
         <>
           <div className="space-y-1.5">

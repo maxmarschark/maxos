@@ -10,9 +10,14 @@ import { SearchInput } from "../components/ui/SearchInput"
 import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
+import { PageHeader } from "../components/ui/PageHeader"
+import { Pagination } from "../components/ui/Pagination"
+import { useToast } from "../components/ui/useToast"
+import { usePagination } from "../hooks/usePagination"
+import { sortRows } from "../lib/tableSort"
 import { ORDER_STATUSES } from "../features/orders/constants"
 
-function filterAndSort(orders, { search, statusFilter, brandFilter, accountFilter, sortField, sortDir }) {
+function filterOrders(orders, { search, statusFilter, brandFilter, accountFilter }) {
   let result = [...orders]
 
   if (search.trim()) {
@@ -27,43 +32,22 @@ function filterAndSort(orders, { search, statusFilter, brandFilter, accountFilte
     )
   }
 
-  if (statusFilter) {
-    result = result.filter((o) => o.orderStatus === statusFilter)
-  }
-
-  if (brandFilter) {
-    result = result.filter((o) => o.brandId === brandFilter)
-  }
-
-  if (accountFilter) {
-    result = result.filter((o) => o.accountId === accountFilter)
-  }
-
-  result.sort((a, b) => {
-    let aVal = a[sortField]
-    let bVal = b[sortField]
-
-    if (sortField === "orderAmount" || sortField === "commissionPercent") {
-      aVal = Number(aVal) || 0
-      bVal = Number(bVal) || 0
-    } else if (sortField === "orderDate") {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    } else {
-      aVal = String(aVal ?? "").toLowerCase()
-      bVal = String(bVal ?? "").toLowerCase()
-    }
-
-    if (aVal < bVal) return sortDir === "asc" ? -1 : 1
-    if (aVal > bVal) return sortDir === "asc" ? 1 : -1
-    return 0
-  })
+  if (statusFilter) result = result.filter((o) => o.orderStatus === statusFilter)
+  if (brandFilter) result = result.filter((o) => o.brandId === brandFilter)
+  if (accountFilter) result = result.filter((o) => o.accountId === accountFilter)
 
   return result
 }
 
+const SORT_FIELD_TYPES = {
+  orderAmount: "number",
+  commissionPercent: "number",
+  orderDate: "date",
+}
+
 export function OrdersPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { orders, accounts, brands, addOrder, updateOrder, deleteOrder, refreshReferences } =
     useOrders()
 
@@ -73,23 +57,23 @@ export function OrdersPage() {
   const [accountFilter, setAccountFilter] = useState("")
   const [sortField, setSortField] = useState("orderDate")
   const [sortDir, setSortDir] = useState("desc")
+  const [pageSize, setPageSize] = useState(25)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingOrder, setEditingOrder] = useState(null)
   const [deletingOrder, setDeletingOrder] = useState(null)
 
-  const filtered = useMemo(
-    () =>
-      filterAndSort(orders, {
-        search,
-        statusFilter,
-        brandFilter,
-        accountFilter,
-        sortField,
-        sortDir,
-      }),
-    [orders, search, statusFilter, brandFilter, accountFilter, sortField, sortDir]
-  )
+  const filtered = useMemo(() => {
+    const rows = filterOrders(orders, {
+      search,
+      statusFilter,
+      brandFilter,
+      accountFilter,
+    })
+    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+  }, [orders, search, statusFilter, brandFilter, accountFilter, sortField, sortDir])
+
+  const pagination = usePagination(filtered, pageSize)
 
   function handleSort(field) {
     if (sortField === field) {
@@ -115,26 +99,30 @@ export function OrdersPage() {
   function handleFormSubmit(data) {
     if (editingOrder) {
       updateOrder(editingOrder.id, data)
+      toast(`Updated order #${data.orderNumber}`)
     } else {
       addOrder(data)
+      toast(`Created order #${data.orderNumber}`)
     }
+  }
+
+  function handleDelete() {
+    deleteOrder(deletingOrder.id)
+    toast(`Deleted order #${deletingOrder.orderNumber}`)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-            Orders
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {orders.length} order{orders.length !== 1 ? "s" : ""} tracked
-          </p>
-        </div>
-        <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
-          Add Order
-        </Button>
-      </div>
+      <PageHeader
+        icon={Package}
+        title="Orders"
+        description={`${orders.length} order${orders.length !== 1 ? "s" : ""} tracked`}
+        actions={
+          <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
+            Add Order
+          </Button>
+        }
+      />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <SearchInput
@@ -196,15 +184,27 @@ export function OrdersPage() {
           />
         </Card>
       ) : (
-        <OrdersTable
-          orders={filtered}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={handleSort}
-          onRowClick={(id) => navigate(`/orders/${id}`)}
-          onEdit={handleEdit}
-          onDelete={setDeletingOrder}
-        />
+        <>
+          <OrdersTable
+            orders={pagination.paginatedItems}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={handleSort}
+            onRowClick={(id) => navigate(`/orders/${id}`)}
+            onEdit={handleEdit}
+            onDelete={setDeletingOrder}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            rangeStart={pagination.rangeStart}
+            rangeEnd={pagination.rangeEnd}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       <OrderFormModal
@@ -222,7 +222,7 @@ export function OrdersPage() {
       <DeleteOrderModal
         open={Boolean(deletingOrder)}
         onClose={() => setDeletingOrder(null)}
-        onConfirm={() => deleteOrder(deletingOrder.id)}
+        onConfirm={handleDelete}
         orderNumber={deletingOrder?.orderNumber ?? ""}
       />
     </div>

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import {
   Table,
   TableHeader,
@@ -7,34 +7,11 @@ import {
   TableHead,
   TableCell,
 } from "../../../components/ui/Table"
+import { SortableHead } from "../../../components/ui/SortableTable"
 import { Badge } from "../../../components/ui/Badge"
 import { Button } from "../../../components/ui/Button"
 import { formatDate } from "../../../lib/format"
 import { TYPE_VARIANTS } from "../constants"
-
-function SortIcon({ field, sortField, sortDir }) {
-  if (sortField !== field) return <ArrowUpDown size={12} className="text-zinc-600" />
-  return sortDir === "asc" ? (
-    <ArrowUp size={12} className="text-indigo-400" />
-  ) : (
-    <ArrowDown size={12} className="text-indigo-400" />
-  )
-}
-
-function SortableHead({ field, label, sortField, sortDir, onSort }) {
-  return (
-    <TableHead>
-      <button
-        type="button"
-        onClick={() => onSort(field)}
-        className="inline-flex items-center gap-1.5 transition-colors hover:text-zinc-300"
-      >
-        {label}
-        <SortIcon field={field} sortField={sortField} sortDir={sortDir} />
-      </button>
-    </TableHead>
-  )
-}
 
 export function ContactsTable({
   contacts,
@@ -53,7 +30,7 @@ export function ContactsTable({
   someSelected = false,
 }) {
   return (
-    <Table>
+    <Table maxHeight="70vh">
       <TableHeader>
         <TableRow>
           {selectable && (

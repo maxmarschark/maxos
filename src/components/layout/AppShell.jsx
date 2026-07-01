@@ -3,8 +3,10 @@ import { Sidebar } from "./Sidebar"
 import { TopNav } from "./TopNav"
 import { PageContainer } from "./PageContainer"
 import { CommandPalette } from "../command-palette/CommandPalette"
+import { ToastProvider } from "../ui/Toast"
 import { useCommandPalette } from "../../hooks/useCommandPalette"
 import { useSidebar } from "../../hooks/useSidebar"
+import { useLastRoute } from "../../hooks/useLastRoute"
 import { AccountsProvider } from "../../features/accounts/AccountsProvider"
 import { OrdersProvider } from "../../features/orders/OrdersProvider"
 import { ContactsProvider } from "../../features/contacts/ContactsProvider"
@@ -17,6 +19,8 @@ function AppShellContent() {
   const { collapsed, mobileOpen, toggleCollapsed, openMobile, closeMobile } =
     useSidebar()
   const { buildDayPlan, isBuilding } = useTodayBuild()
+
+  useLastRoute()
 
   function handleCommandSelect(action) {
     if (action?.id === "build-day") {
@@ -59,16 +63,18 @@ function AppShellContent() {
 
 export function AppShell() {
   return (
-    <AccountsProvider>
-      <OrdersProvider>
-        <ContactsProvider>
-          <CommissionsProvider>
-            <TodayBuildProvider>
-              <AppShellContent />
-            </TodayBuildProvider>
-          </CommissionsProvider>
-        </ContactsProvider>
-      </OrdersProvider>
-    </AccountsProvider>
+    <ToastProvider>
+      <AccountsProvider>
+        <OrdersProvider>
+          <ContactsProvider>
+            <CommissionsProvider>
+              <TodayBuildProvider>
+                <AppShellContent />
+              </TodayBuildProvider>
+            </CommissionsProvider>
+          </ContactsProvider>
+        </OrdersProvider>
+      </AccountsProvider>
+    </ToastProvider>
   )
 }

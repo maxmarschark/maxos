@@ -54,7 +54,7 @@ export function Modal({
           className
         )}
       >
-        <div className="flex shrink-0 items-start justify-between border-b border-zinc-800 px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-zinc-800 px-6 py-5">
           <div>
             <h2 id="modal-title" className="text-base font-semibold text-zinc-100">
               {title}
@@ -73,10 +73,10 @@ export function Modal({
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-5 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-6 py-4">
             {footer}
           </div>
         )}

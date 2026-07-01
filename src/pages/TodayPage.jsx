@@ -1,6 +1,8 @@
+import { Sun } from "lucide-react"
 import { useContacts } from "../features/contacts/useContacts"
 import { useTodayBuild } from "../features/today/useTodayBuild"
 import { useTodayDashboard } from "../features/today/useTodayDashboard"
+import { PageHeader } from "../components/ui/PageHeader"
 import { TopMetricsRow } from "../features/today/components/TopMetricsRow"
 import { BuildMyDayPanel } from "../features/today/components/BuildMyDayPanel"
 import { CollectionsSection } from "../features/today/components/CollectionsSection"
@@ -22,22 +24,21 @@ export function TodayPage() {
     })
   }
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-          {dashboard.greeting}
-        </h1>
-        <p className="mt-0.5 text-sm text-zinc-500">
-          {hasGenerated
-            ? `${plan.length} prioritized action${plan.length !== 1 ? "s" : ""} in your plan`
-            : dashboard.subtitle}
-        </p>
-      </div>
+  const subtitle = hasGenerated
+    ? `${plan.length} prioritized action${plan.length !== 1 ? "s" : ""} in your plan`
+    : dashboard.subtitle
 
-      <TopMetricsRow metrics={dashboard.topMetrics} />
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        icon={Sun}
+        title={dashboard.greeting}
+        description={subtitle}
+      />
 
       <BuildMyDayPanel />
+
+      <TopMetricsRow metrics={dashboard.topMetrics} />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <CollectionsSection collections={dashboard.collections} />

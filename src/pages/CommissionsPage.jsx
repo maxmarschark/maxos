@@ -10,6 +10,10 @@ import { SearchInput } from "../components/ui/SearchInput"
 import { Select } from "../components/ui/Select"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
+import { PageHeader } from "../components/ui/PageHeader"
+import { Pagination } from "../components/ui/Pagination"
+import { useToast } from "../components/ui/useToast"
+import { usePagination } from "../hooks/usePagination"
 import { COMMISSION_STATUSES } from "../features/commissions/constants"
 
 function filterCommissions(commissions, { search, statusFilter, brandFilter, accountFilter }) {
@@ -41,6 +45,7 @@ function filterCommissions(commissions, { search, statusFilter, brandFilter, acc
 }
 
 export function CommissionsPage() {
+  const { toast } = useToast()
   const {
     commissions,
     summary,
@@ -54,6 +59,7 @@ export function CommissionsPage() {
   const [statusFilter, setStatusFilter] = useState("")
   const [brandFilter, setBrandFilter] = useState("")
   const [accountFilter, setAccountFilter] = useState("")
+  const [pageSize, setPageSize] = useState(25)
   const [editingCommission, setEditingCommission] = useState(null)
 
   const brandsInData = useMemo(() => {
@@ -77,20 +83,25 @@ export function CommissionsPage() {
     [commissions, search, statusFilter, brandFilter, accountFilter]
   )
 
+  const pagination = usePagination(filtered, pageSize)
+
   function handleEditSubmit(data) {
     updateCommission(editingCommission.orderId, data)
+    toast(`Updated commission for order #${editingCommission.orderNumber}`)
+  }
+
+  function handleMarkStatus(id, status) {
+    markStatus(id, status)
+    toast(`Commission marked as ${status}`)
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-          Commissions
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          {commissions.length} commission record{commissions.length !== 1 ? "s" : ""} from orders
-        </p>
-      </div>
+      <PageHeader
+        icon={DollarSign}
+        title="Commissions"
+        description={`${commissions.length} commission record${commissions.length !== 1 ? "s" : ""} from orders`}
+      />
 
       <CommissionSummaryCards summary={summary} />
 
@@ -152,13 +163,25 @@ export function CommissionsPage() {
           />
         </Card>
       ) : (
-        <CommissionsTable
-          commissions={filtered}
-          onEdit={setEditingCommission}
-          onMarkInvoiced={(id) => markStatus(id, "Invoiced")}
-          onMarkPaid={(id) => markStatus(id, "Paid")}
-          onMarkDisputed={(id) => markStatus(id, "Disputed")}
-        />
+        <>
+          <CommissionsTable
+            commissions={pagination.paginatedItems}
+            onEdit={setEditingCommission}
+            onMarkInvoiced={(id) => handleMarkStatus(id, "Invoiced")}
+            onMarkPaid={(id) => handleMarkStatus(id, "Paid")}
+            onMarkDisputed={(id) => handleMarkStatus(id, "Disputed")}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            rangeStart={pagination.rangeStart}
+            rangeEnd={pagination.rangeEnd}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

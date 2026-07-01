@@ -11,7 +11,7 @@ export function Card({ children, className, padding = "md", ...props }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-800/80 bg-zinc-900/30",
+        "rounded-xl border border-zinc-800/80 bg-zinc-900/30 transition-colors",
         paddings[padding],
         className
       )}

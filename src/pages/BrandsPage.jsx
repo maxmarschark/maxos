@@ -9,65 +9,48 @@ import { Button } from "../components/ui/Button"
 import { SearchInput } from "../components/ui/SearchInput"
 import { Card } from "../components/ui/Card"
 import { EmptyState } from "../components/ui/EmptyState"
+import { PageHeader } from "../components/ui/PageHeader"
+import { Pagination } from "../components/ui/Pagination"
+import { useToast } from "../components/ui/useToast"
+import { usePagination } from "../hooks/usePagination"
+import { useTableSort } from "../hooks/useTableSort"
+import { sortRows } from "../lib/tableSort"
 
-function filterAndSort(brands, { search, sortField, sortDir }) {
-  let result = [...brands]
+function filterBrands(brands, { search }) {
+  if (!search.trim()) return [...brands]
+  const q = search.toLowerCase()
+  return brands.filter(
+    (b) =>
+      b.brandName.toLowerCase().includes(q) ||
+      b.mainContact.toLowerCase().includes(q) ||
+      b.contactEmail.toLowerCase().includes(q) ||
+      b.description.toLowerCase().includes(q)
+  )
+}
 
-  if (search.trim()) {
-    const q = search.toLowerCase()
-    result = result.filter(
-      (b) =>
-        b.brandName.toLowerCase().includes(q) ||
-        b.mainContact.toLowerCase().includes(q) ||
-        b.contactEmail.toLowerCase().includes(q) ||
-        b.description.toLowerCase().includes(q)
-    )
-  }
-
-  result.sort((a, b) => {
-    let aVal = a[sortField]
-    let bVal = b[sortField]
-
-    if (sortField === "commissionDefault" || sortField === "monthlySales") {
-      aVal = Number(aVal) || 0
-      bVal = Number(bVal) || 0
-    } else {
-      aVal = String(aVal ?? "").toLowerCase()
-      bVal = String(bVal ?? "").toLowerCase()
-    }
-
-    if (aVal < bVal) return sortDir === "asc" ? -1 : 1
-    if (aVal > bVal) return sortDir === "asc" ? 1 : -1
-    return 0
-  })
-
-  return result
+const SORT_FIELD_TYPES = {
+  commissionDefault: "number",
+  monthlySales: "number",
 }
 
 export function BrandsPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { brands, addBrand, updateBrand, deleteBrand } = useBrands()
 
   const [search, setSearch] = useState("")
-  const [sortField, setSortField] = useState("brandName")
-  const [sortDir, setSortDir] = useState("asc")
+  const { sortField, sortDir, handleSort } = useTableSort("brandName", "asc")
+  const [pageSize, setPageSize] = useState(25)
   const [formOpen, setFormOpen] = useState(false)
   const [editingBrand, setEditingBrand] = useState(null)
   const [deletingBrand, setDeletingBrand] = useState(null)
 
-  const filtered = useMemo(
-    () => filterAndSort(brands, { search, sortField, sortDir }),
-    [brands, search, sortField, sortDir]
-  )
+  const filtered = useMemo(() => {
+    const rows = filterBrands(brands, { search })
+    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+  }, [brands, search, sortField, sortDir])
 
-  function handleSort(field) {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortDir("asc")
-    }
-  }
+  const pagination = usePagination(filtered, pageSize)
 
   function handleAdd() {
     setEditingBrand(null)
@@ -82,26 +65,30 @@ export function BrandsPage() {
   function handleFormSubmit(data) {
     if (editingBrand) {
       updateBrand(editingBrand.id, data)
+      toast(`Updated ${data.brandName}`)
     } else {
       addBrand(data)
+      toast(`Added ${data.brandName}`)
     }
+  }
+
+  function handleDelete() {
+    deleteBrand(deletingBrand.id)
+    toast(`Deleted ${deletingBrand.brandName}`)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 sm:text-2xl">
-            Brands
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {brands.length} brand partner{brands.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
-          Add Brand
-        </Button>
-      </div>
+      <PageHeader
+        icon={Tags}
+        title="Brands"
+        description={`${brands.length} brand partner${brands.length !== 1 ? "s" : ""}`}
+        actions={
+          <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
+            Add Brand
+          </Button>
+        }
+      />
 
       <SearchInput
         className="max-w-md"
@@ -125,15 +112,27 @@ export function BrandsPage() {
           />
         </Card>
       ) : (
-        <BrandsTable
-          brands={filtered}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={handleSort}
-          onRowClick={(id) => navigate(`/brands/${id}`)}
-          onEdit={handleEdit}
-          onDelete={setDeletingBrand}
-        />
+        <>
+          <BrandsTable
+            brands={pagination.paginatedItems}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={handleSort}
+            onRowClick={(id) => navigate(`/brands/${id}`)}
+            onEdit={handleEdit}
+            onDelete={setDeletingBrand}
+          />
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            rangeStart={pagination.rangeStart}
+            rangeEnd={pagination.rangeEnd}
+            pageSize={pageSize}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       <BrandFormModal
@@ -149,7 +148,7 @@ export function BrandsPage() {
       <DeleteBrandModal
         open={Boolean(deletingBrand)}
         onClose={() => setDeletingBrand(null)}
-        onConfirm={() => deleteBrand(deletingBrand.id)}
+        onConfirm={handleDelete}
         brandName={deletingBrand?.brandName ?? ""}
       />
     </div>

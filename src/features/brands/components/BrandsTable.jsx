@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import {
   Table,
   TableHeader,
@@ -7,35 +7,12 @@ import {
   TableHead,
   TableCell,
 } from "../../../components/ui/Table"
+import { SortableHead } from "../../../components/ui/SortableTable"
 import { Badge } from "../../../components/ui/Badge"
 import { Button } from "../../../components/ui/Button"
 import { formatCurrency, formatPercent } from "../../../lib/format"
 import { STATUS_VARIANTS } from "../constants"
 import { getActiveAccountCount } from "../utils"
-
-function SortIcon({ field, sortField, sortDir }) {
-  if (sortField !== field) return <ArrowUpDown size={12} className="text-zinc-600" />
-  return sortDir === "asc" ? (
-    <ArrowUp size={12} className="text-indigo-400" />
-  ) : (
-    <ArrowDown size={12} className="text-indigo-400" />
-  )
-}
-
-function SortableHead({ field, label, sortField, sortDir, onSort, align }) {
-  return (
-    <TableHead className={align === "right" ? "text-right" : undefined}>
-      <button
-        type="button"
-        onClick={() => onSort(field)}
-        className={`inline-flex items-center gap-1.5 transition-colors hover:text-zinc-300 ${align === "right" ? "ml-auto" : ""}`}
-      >
-        {label}
-        <SortIcon field={field} sortField={sortField} sortDir={sortDir} />
-      </button>
-    </TableHead>
-  )
-}
 
 export function BrandsTable({
   brands,
@@ -47,7 +24,7 @@ export function BrandsTable({
   onDelete,
 }) {
   return (
-    <Table>
+    <Table maxHeight="70vh">
       <TableHeader>
         <TableRow>
           <SortableHead

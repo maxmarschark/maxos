@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Package, UserPlus, Building2, DollarSign } from "lucide-react"
 import { Card } from "../../../components/ui/Card"
+import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
 
@@ -33,10 +34,10 @@ export function ActivityFeed({ activity }) {
   const visible = expanded ? activity : activity.slice(0, LIMIT)
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="flex min-h-[220px] flex-col">
       <SectionHeader title="Activity Feed" count={activity.length} />
       {activity.length === 0 ? (
-        <p className="text-sm text-zinc-600">No recent activity.</p>
+        <SectionEmpty>No recent activity.</SectionEmpty>
       ) : (
         <>
           <div className="space-y-0.5">

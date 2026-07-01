@@ -20,7 +20,7 @@ export function CommissionsTable({
   onMarkDisputed,
 }) {
   return (
-    <Table>
+    <Table maxHeight="70vh">
       <TableHeader>
         <TableRow>
           <TableHead>Order #</TableHead>

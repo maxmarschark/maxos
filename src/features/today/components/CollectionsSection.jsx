@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Card } from "../../../components/ui/Card"
+import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { Badge } from "../../../components/ui/Badge"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
@@ -14,10 +15,10 @@ export function CollectionsSection({ collections }) {
   const total = collections.reduce((s, c) => s + c.amountDue, 0)
 
   return (
-    <Card padding="md">
+    <Card padding="md" className="flex min-h-[220px] flex-col">
       <SectionHeader title="Collections Due" count={collections.length} />
       {collections.length === 0 ? (
-        <p className="text-sm text-zinc-600">No unpaid balances.</p>
+        <SectionEmpty>No unpaid balances.</SectionEmpty>
       ) : (
         <>
           <p className="mb-2 text-xs text-zinc-500">{formatCurrency(total)} outstanding</p>

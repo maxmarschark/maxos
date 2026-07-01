@@ -50,16 +50,27 @@ export function Sidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMobil
               title={collapsed ? route.name : undefined}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center rounded-lg text-[13px] font-medium transition-colors",
+                  "relative flex items-center rounded-lg text-[13px] font-medium transition-colors",
                   collapsed ? "justify-center px-2 py-2.5" : "gap-2.5 px-2.5 py-2",
                   isActive
-                    ? "bg-zinc-800/80 text-zinc-100"
+                    ? "bg-indigo-950/50 text-indigo-100 ring-1 ring-inset ring-indigo-800/50"
                     : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
                 )
               }
             >
-              <Icon size={16} strokeWidth={1.75} />
-              {!collapsed && <span>{route.name}</span>}
+              {({ isActive }) => (
+                <>
+                  {isActive && !collapsed && (
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-indigo-500" />
+                  )}
+                  <Icon
+                    size={16}
+                    strokeWidth={1.75}
+                    className={isActive ? "text-indigo-400" : undefined}
+                  />
+                  {!collapsed && <span>{route.name}</span>}
+                </>
+              )}
             </NavLink>
           )
         })}

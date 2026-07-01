@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { ListOrdered, Sparkles } from "lucide-react"
 import { Card } from "../../../components/ui/Card"
 import { Badge } from "../../../components/ui/Badge"
+import { LoadingState } from "../../../components/ui/Loading"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
 import { useTodayBuild } from "../useTodayBuild"
@@ -37,7 +38,10 @@ export function BuildMyDayPanel() {
   const visible = expanded ? plan : plan.slice(0, PRIORITY_LIMIT)
 
   return (
-    <Card padding="md" className="border-indigo-900/40 bg-indigo-950/10">
+    <Card
+      padding="md"
+      className="border-indigo-900/50 bg-gradient-to-br from-indigo-950/20 to-zinc-900/30 shadow-sm shadow-indigo-950/20"
+    >
       <SectionHeader
         title="Build My Day"
         count={hasGenerated ? plan.length : null}
@@ -52,20 +56,20 @@ export function BuildMyDayPanel() {
       />
 
       {isBuilding && (
-        <p className="text-sm text-indigo-400">Building your plan…</p>
+        <LoadingState message="Building your plan…" className="py-8" />
       )}
 
       {!isBuilding && hasGenerated && generatedAt && (
-        <p className="mb-2 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-zinc-500">
           Plan generated at {formatGeneratedTime(generatedAt)}
         </p>
       )}
 
       {!isBuilding && !hasGenerated && (
-        <div className="flex items-start gap-2 text-sm text-zinc-500">
-          <Sparkles size={14} className="mt-0.5 shrink-0 text-indigo-400" />
+        <div className="flex items-start gap-3 rounded-lg border border-indigo-900/30 bg-indigo-950/20 px-4 py-3 text-sm text-zinc-400">
+          <Sparkles size={16} className="mt-0.5 shrink-0 text-indigo-400" />
           <p>
-            Click <span className="font-medium text-zinc-400">Build My Day</span> in the
+            Click <span className="font-medium text-zinc-200">Build My Day</span> in the
             header to generate your prioritized action list.
           </p>
         </div>
