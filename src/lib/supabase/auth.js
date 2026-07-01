@@ -1,7 +1,9 @@
 import { getSupabaseClient } from "./client"
 import { getAppRedirectUrl, getSettingsOAuthRedirectUrl } from "./oauthRedirect"
 import { fetchGoogleCalendarEvents, getCalendarWindow } from "../google/calendarApi"
+import { probeGmailAccess } from "../google/gmailApi"
 import { GOOGLE_CALENDAR_STATUS } from "../../features/google-calendar/constants"
+import { GMAIL_STATUS } from "../../features/gmail/constants"
 
 const LOG_PREFIX = "[Max OS Supabase]"
 
@@ -147,6 +149,35 @@ export async function connectGoogleCalendar() {
   return { ok: true, redirectTo }
 }
 
+export async function connectGoogleGmail() {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured" }
+  }
+
+  const redirectTo = getSettingsOAuthRedirectUrl()
+  console.info(`${LOG_PREFIX} Gmail OAuth redirectTo:`, redirectTo)
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      scopes: "https://www.googleapis.com/auth/gmail.readonly",
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
+      },
+    },
+  })
+
+  if (error) {
+    console.warn(`${LOG_PREFIX} Gmail connect failed:`, error.message)
+    return { ok: false, error: error.message, redirectTo }
+  }
+
+  return { ok: true, redirectTo }
+}
+
 export async function getGoogleAccessToken() {
   const supabase = getSupabaseClient()
   if (!supabase) return null
@@ -200,6 +231,44 @@ export async function resolveGoogleCalendarStatus({ optIn = false } = {}) {
   }
 
   return { status: GOOGLE_CALENDAR_STATUS.NOT_CONNECTED, hasProviderToken: true }
+}
+
+/**
+ * Derives Gmail connection status from provider_token and a Gmail API probe.
+ */
+export async function resolveGmailStatus({ optIn = false } = {}) {
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: false }
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session?.user) {
+    return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: false }
+  }
+
+  const token = session.provider_token ?? (await getGoogleAccessToken())
+  if (!token) {
+    return {
+      status: optIn ? GMAIL_STATUS.PERMISSION_NEEDED : GMAIL_STATUS.NOT_CONNECTED,
+      hasProviderToken: false,
+    }
+  }
+
+  const probe = await probeGmailAccess(token)
+
+  if (probe.ok) {
+    return { status: GMAIL_STATUS.CONNECTED, hasProviderToken: true }
+  }
+
+  if (probe.reason === "permission_needed") {
+    return { status: GMAIL_STATUS.PERMISSION_NEEDED, hasProviderToken: true }
+  }
+
+  return { status: GMAIL_STATUS.NOT_CONNECTED, hasProviderToken: true }
 }
 
 export async function signOut() {
