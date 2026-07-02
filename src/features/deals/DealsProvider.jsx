@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { DEALS_STORAGE_KEY, EMPTY_DEAL } from "./constants"
 import { DealsContext } from "./deals-context"
 
@@ -14,6 +20,7 @@ function loadCloudApi() {
 }
 
 export function DealsProvider({ children }) {
+  const authReady = useAuthReady()
   const [deals, setDeals] = useState(loadLocalDeals)
 
   const initCloud = useCallback(
@@ -28,26 +35,12 @@ export function DealsProvider({ children }) {
     moduleName: "Deals",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(DEALS_STORAGE_KEY, deals)
   }, [deals])
-
-  const syncDealToCloud = useCallback(
-    async (deal) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudDeal } = await loadCloudApi()
-      const result = await updateCloudDeal(deal)
-      if (!result.ok) {
-        console.error("[Max OS Deals] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const getDeal = useCallback((id) => deals.find((d) => d.id === id), [deals])
 
@@ -62,54 +55,65 @@ export function DealsProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudDeal } = await loadCloudApi()
-        const result = await insertCloudDeal(deal)
-        if (result.ok) {
-          setDeals((prev) => [result.deal, ...prev])
-          return result.deal
-        }
-        console.error("[Max OS Deals] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudDeal } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudDeal,
+        entity: deal,
+        label: "Deals",
+      })
 
-      setDeals((prev) => [deal, ...prev])
-      return deal
+      if (!persisted.ok) return null
+      setDeals((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateDeal = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedDeal = null
+    async (id, data) => {
+      const existing = deals.find((d) => d.id === id)
+      if (!existing) return false
 
-      setDeals((prev) =>
-        prev.map((d) => {
-          if (d.id !== id) return d
-          updatedDeal = { ...d, ...data, updatedAt: now }
-          return updatedDeal
-        })
-      )
-
-      if (updatedDeal) {
-        void syncDealToCloud(updatedDeal)
+      const updatedDeal = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudDeal } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudDeal,
+        entity: updatedDeal,
+        label: "Deals",
+      })
+
+      if (!persisted.ok) return false
+      setDeals((prev) =>
+        prev.map((d) => (d.id === id ? persisted.entity : d))
+      )
+      return true
     },
-    [syncDealToCloud]
+    [deals, fallBackToLocal]
   )
 
   const deleteDeal = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudDeal } = await loadCloudApi()
-        const result = await deleteCloudDeal(id)
-        if (!result.ok) {
-          console.error("[Max OS Deals] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudDeal } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudDeal,
+        id,
+        label: "Deals",
+      })
+
+      if (!persisted.ok) return false
       setDeals((prev) => prev.filter((d) => d.id !== id))
+      return true
     },
     [fallBackToLocal]
   )

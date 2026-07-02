@@ -1,6 +1,24 @@
 import { buildCommissionRecords } from "../../features/commissions/utils"
 import { buildActivityTimeline, buildRelationshipContext } from "../relationships"
 
+function resolveContactNameForSupabase(contact) {
+  const fullName = String(contact.fullName ?? contact.name ?? "").trim()
+  if (fullName) return fullName
+
+  const firstName = String(contact.firstName ?? "").trim()
+  const lastName = String(contact.lastName ?? "").trim()
+  if (firstName && lastName) return `${firstName} ${lastName}`
+  if (firstName) return firstName
+
+  const company = String(contact.company ?? "").trim()
+  if (company) return company
+
+  const email = String(contact.email ?? "").trim()
+  if (email) return email
+
+  return "Unknown Contact"
+}
+
 function toNullable(value) {
   if (value === "" || value === undefined) return null
   return value
@@ -182,10 +200,20 @@ export function transformBrandProduct(product, brandId, userId) {
 }
 
 export function parseContactRow(row) {
+  const dbName = row.name?.trim() ?? ""
+  let firstName = row.first_name ?? ""
+  let lastName = row.last_name ?? ""
+  if (!firstName && !lastName && dbName) {
+    const parts = dbName.split(/\s+/)
+    firstName = parts[0] ?? ""
+    lastName = parts.slice(1).join(" ")
+  }
+
   return {
     id: row.id,
-    firstName: row.first_name ?? "",
-    lastName: row.last_name ?? "",
+    name: dbName,
+    firstName,
+    lastName,
     accountId: row.account_id ?? "",
     brandId: row.brand_id ?? "",
     company: row.company ?? "",
@@ -310,6 +338,7 @@ export function transformContact(contact, userId) {
   return {
     id: contact.id,
     ...(userId ? { user_id: userId } : {}),
+    name: resolveContactNameForSupabase(contact),
     first_name: contact.firstName ?? "",
     last_name: contact.lastName ?? "",
     account_id: toNullable(contact.accountId),

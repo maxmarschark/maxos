@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import { useContacts } from "../contacts/useContacts"
@@ -34,6 +40,7 @@ function loadCloudApi() {
 }
 
 export function TasksProvider({ children }) {
+  const authReady = useAuthReady()
   const { accounts } = useAccounts()
   const { contacts } = useContacts()
   const { orders } = useOrders()
@@ -53,26 +60,12 @@ export function TasksProvider({ children }) {
     moduleName: "Tasks",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(TASKS_STORAGE_KEY, tasks)
   }, [tasks])
-
-  const syncTaskToCloud = useCallback(
-    async (task) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudTask } = await loadCloudApi()
-      const result = await updateCloudTask(task)
-      if (!result.ok) {
-        console.error("[Max OS Tasks] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const refs = useMemo(
     () => ({ accounts, contacts, brands, orders }),
@@ -105,72 +98,80 @@ export function TasksProvider({ children }) {
         completedAt: data.status === "Complete" ? now : null,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudTask } = await loadCloudApi()
-        const result = await insertCloudTask(task)
-        if (result.ok) {
-          setTasks((prev) => [result.task, ...prev])
-          return result.task
-        }
-        console.error("[Max OS Tasks] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudTask } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudTask,
+        entity: task,
+        label: "Tasks",
+      })
 
-      setTasks((prev) => [task, ...prev])
-      return task
+      if (!persisted.ok) return null
+      setTasks((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateTask = useCallback(
-    (id, data) => {
-      let updatedTask = null
+    async (id, data) => {
+      const existing = tasks.find((t) => t.id === id)
+      if (!existing) return false
 
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t.id !== id) return t
-          const now = new Date().toISOString()
-          const nextStatus = data.status ?? t.status
-          updatedTask = {
-            ...t,
-            ...data,
-            updatedAt: now,
-            completedAt:
-              nextStatus === "Complete"
-                ? data.completedAt ?? t.completedAt ?? now
-                : nextStatus === "Open" || nextStatus === "In Progress"
-                  ? null
-                  : t.completedAt,
-          }
-          return updatedTask
-        })
-      )
-
-      if (updatedTask) {
-        void syncTaskToCloud(updatedTask)
+      const now = new Date().toISOString()
+      const nextStatus = data.status ?? existing.status
+      const updatedTask = {
+        ...existing,
+        ...data,
+        updatedAt: now,
+        completedAt:
+          nextStatus === "Complete"
+            ? data.completedAt ?? existing.completedAt ?? now
+            : nextStatus === "Open" || nextStatus === "In Progress"
+              ? null
+              : existing.completedAt,
       }
+
+      const { updateCloudTask } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudTask,
+        entity: updatedTask,
+        label: "Tasks",
+      })
+
+      if (!persisted.ok) return false
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? persisted.entity : t))
+      )
+      return true
     },
-    [syncTaskToCloud]
+    [tasks, fallBackToLocal]
   )
 
   const deleteTask = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudTask } = await loadCloudApi()
-        const result = await deleteCloudTask(id)
-        if (!result.ok) {
-          console.error("[Max OS Tasks] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudTask } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudTask,
+        id,
+        label: "Tasks",
+      })
+
+      if (!persisted.ok) return false
       setTasks((prev) => prev.filter((t) => t.id !== id))
+      return true
     },
     [fallBackToLocal]
   )
 
   const markComplete = useCallback(
-    (id) => {
-      updateTask(id, { status: "Complete" })
+    async (id) => {
+      return updateTask(id, { status: "Complete" })
     },
     [updateTask]
   )

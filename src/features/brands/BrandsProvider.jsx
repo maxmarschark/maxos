@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { BRANDS_STORAGE_KEY, EMPTY_BRAND, EMPTY_PRODUCT } from "./constants"
 import { SEED_BRANDS } from "./seed"
 import { BrandsContext } from "./brands-context"
@@ -15,6 +21,7 @@ function loadCloudApi() {
 }
 
 export function BrandsProvider({ children }) {
+  const authReady = useAuthReady()
   const [brands, setBrands] = useState(loadLocalBrands)
 
   const initCloud = useCallback(
@@ -29,44 +36,35 @@ export function BrandsProvider({ children }) {
     moduleName: "Brands",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(BRANDS_STORAGE_KEY, brands)
   }, [brands])
 
-  const syncBrandToCloud = useCallback(
-    async (brand) => {
-      if (storageModeRef.current !== "cloud") return true
+  const mutateBrand = useCallback(
+    async (brandId, updater) => {
+      const existing = brands.find((b) => b.id === brandId)
+      if (!existing) return false
+
+      const updatedBrand = updater(existing)
       const { updateCloudBrand } = await loadCloudApi()
-      const result = await updateCloudBrand(brand)
-      if (!result.ok) {
-        console.error("[Max OS Brands] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudBrand,
+        entity: updatedBrand,
+        label: "Brands",
+      })
+
+      if (!persisted.ok) return false
+      setBrands((prev) =>
+        prev.map((b) => (b.id === brandId ? persisted.entity : b))
+      )
       return true
     },
-    [fallBackToLocal]
-  )
-
-  const mutateBrand = useCallback(
-    (brandId, updater) => {
-      let updatedBrand = null
-
-      setBrands((prev) =>
-        prev.map((b) => {
-          if (b.id !== brandId) return b
-          updatedBrand = updater(b)
-          return updatedBrand
-        })
-      )
-
-      if (updatedBrand) {
-        void syncBrandToCloud(updatedBrand)
-      }
-    },
-    [syncBrandToCloud]
+    [brands, fallBackToLocal]
   )
 
   const getBrand = useCallback(
@@ -87,54 +85,65 @@ export function BrandsProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudBrand } = await loadCloudApi()
-        const result = await insertCloudBrand(brand)
-        if (result.ok) {
-          setBrands((prev) => [result.brand, ...prev])
-          return result.brand
-        }
-        console.error("[Max OS Brands] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudBrand } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudBrand,
+        entity: brand,
+        label: "Brands",
+      })
 
-      setBrands((prev) => [brand, ...prev])
-      return brand
+      if (!persisted.ok) return null
+      setBrands((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateBrand = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedBrand = null
+    async (id, data) => {
+      const existing = brands.find((b) => b.id === id)
+      if (!existing) return false
 
-      setBrands((prev) =>
-        prev.map((b) => {
-          if (b.id !== id) return b
-          updatedBrand = { ...b, ...data, updatedAt: now }
-          return updatedBrand
-        })
-      )
-
-      if (updatedBrand) {
-        void syncBrandToCloud(updatedBrand)
+      const updatedBrand = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudBrand } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudBrand,
+        entity: updatedBrand,
+        label: "Brands",
+      })
+
+      if (!persisted.ok) return false
+      setBrands((prev) =>
+        prev.map((b) => (b.id === id ? persisted.entity : b))
+      )
+      return true
     },
-    [syncBrandToCloud]
+    [brands, fallBackToLocal]
   )
 
   const deleteBrand = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudBrand } = await loadCloudApi()
-        const result = await deleteCloudBrand(id)
-        if (!result.ok) {
-          console.error("[Max OS Brands] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudBrand } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudBrand,
+        id,
+        label: "Brands",
+      })
+
+      if (!persisted.ok) return false
       setBrands((prev) => prev.filter((b) => b.id !== id))
+      return true
     },
     [fallBackToLocal]
   )
@@ -167,28 +176,33 @@ export function BrandsProvider({ children }) {
   )
 
   const addProduct = useCallback(
-    (brandId, data) => {
+    async (brandId, data) => {
+      const existing = brands.find((b) => b.id === brandId)
+      if (!existing) return null
+
       const product = { ...EMPTY_PRODUCT, ...data, id: generateId() }
-      let updatedBrand = null
-
-      setBrands((prev) =>
-        prev.map((b) => {
-          if (b.id !== brandId) return b
-          updatedBrand = {
-            ...b,
-            products: [...b.products, product],
-            updatedAt: new Date().toISOString(),
-          }
-          return updatedBrand
-        })
-      )
-
-      if (updatedBrand) {
-        void syncBrandToCloud(updatedBrand)
+      const updatedBrand = {
+        ...existing,
+        products: [...existing.products, product],
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudBrand } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudBrand,
+        entity: updatedBrand,
+        label: "Brands",
+      })
+
+      if (!persisted.ok) return null
+      setBrands((prev) =>
+        prev.map((b) => (b.id === brandId ? persisted.entity : b))
+      )
       return product
     },
-    [syncBrandToCloud]
+    [brands, fallBackToLocal]
   )
 
   const updateProduct = useCallback(

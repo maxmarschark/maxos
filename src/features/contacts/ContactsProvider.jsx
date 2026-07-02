@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import { isSupabaseConfigured } from "../../lib/supabase/env"
+import {
+  persistCloudBatch,
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import {
@@ -11,8 +19,14 @@ import {
 } from "./constants"
 import { buildSeedContacts } from "./seed"
 import { ContactsContext } from "./contacts-context"
-import { mergeContactData } from "./duplicates"
+import { buildContactImportPlan } from "./importBatch"
+import { sanitizeContactImportBatch } from "./cloudContactSanitize"
 import { enrichContacts } from "./utils"
+import {
+  logContactsImportPlan,
+  logCloudAttemptingBatchInsert,
+  logCloudRemainingInCloudMode,
+} from "../../lib/debug/csvImportDiagnostics"
 
 function loadLocalContacts() {
   return loadFromStorage(CONTACTS_STORAGE_KEY, buildSeedContacts())
@@ -27,6 +41,7 @@ function loadCloudApi() {
 }
 
 export function ContactsProvider({ children }) {
+  const authReady = useAuthReady()
   const { accounts } = useAccounts()
   const { brands } = useBrands()
 
@@ -41,10 +56,11 @@ export function ContactsProvider({ children }) {
     setContacts(result.contacts)
   }, [])
 
-  const { storageMode, storageModeRef, fallBackToLocal } = useCloudBootstrap({
+  const { storageMode, storageModeRef } = useCloudBootstrap({
     moduleName: "Contacts",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
@@ -54,21 +70,6 @@ export function ContactsProvider({ children }) {
   useEffect(() => {
     saveToStorage(IMPORT_BATCHES_STORAGE_KEY, importBatches)
   }, [importBatches])
-
-  const syncContactToCloud = useCallback(
-    async (contact) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudContact } = await loadCloudApi()
-      const result = await updateCloudContact(contact)
-      if (!result.ok) {
-        console.error("[Max OS Contacts] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const enrichedContacts = useMemo(
     () => enrichContacts(contacts, accounts, brands),
@@ -102,53 +103,61 @@ export function ContactsProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudContact } = await loadCloudApi()
-        const result = await insertCloudContact(contact)
-        if (result.ok) {
-          setContacts((prev) => [result.contact, ...prev])
-          return result.contact
-        }
-        console.error("[Max OS Contacts] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudContact } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        insert: insertCloudContact,
+        entity: contact,
+        label: "Contacts",
+      })
 
-      setContacts((prev) => [contact, ...prev])
-      return contact
+      if (!persisted.ok) return null
+      setContacts((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
-    [fallBackToLocal]
+    []
   )
 
   const updateContact = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedContact = null
+    async (id, data) => {
+      const existing = contacts.find((c) => c.id === id)
+      if (!existing) return false
 
-      setContacts((prev) =>
-        prev.map((c) => {
-          if (c.id !== id) return c
-          updatedContact = { ...c, ...data, updatedAt: now }
-          return updatedContact
-        })
-      )
-
-      if (updatedContact) {
-        void syncContactToCloud(updatedContact)
+      const updatedContact = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudContact } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        update: updateCloudContact,
+        entity: updatedContact,
+        label: "Contacts",
+      })
+
+      if (!persisted.ok) return false
+      setContacts((prev) =>
+        prev.map((c) => (c.id === id ? persisted.entity : c))
+      )
+      return true
     },
-    [syncContactToCloud]
+    [contacts]
   )
 
   const deleteContact = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudContact } = await loadCloudApi()
-        const result = await deleteCloudContact(id)
-        if (!result.ok) {
-          console.error("[Max OS Contacts] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudContact } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        remove: deleteCloudContact,
+        id,
+        label: "Contacts",
+      })
+
+      if (!persisted.ok) return false
+
       setContacts((prev) => prev.filter((c) => c.id !== id))
       setImportBatches((prev) =>
         prev.map((batch) => ({
@@ -157,24 +166,28 @@ export function ContactsProvider({ children }) {
           contactCount: batch.contactIds.filter((cid) => cid !== id).length,
         }))
       )
+      return true
     },
-    [fallBackToLocal]
+    []
   )
 
   const deleteContacts = useCallback(
     async (ids) => {
       const idSet = new Set(ids)
+      const { deleteCloudContact } = await loadCloudApi()
+
       if (storageModeRef.current === "cloud") {
-        const { deleteCloudContact } = await loadCloudApi()
         for (const id of ids) {
-          const result = await deleteCloudContact(id)
-          if (!result.ok) {
-            console.error("[Max OS Contacts] Cloud delete failed:", result.error)
-            fallBackToLocal()
-            break
-          }
+          const persisted = await persistCloudDelete({
+            storageModeRef,
+            remove: deleteCloudContact,
+            id,
+            label: "Contacts",
+          })
+          if (!persisted.ok) return false
         }
       }
+
       setContacts((prev) => prev.filter((c) => !idSet.has(c.id)))
       setImportBatches((prev) =>
         prev.map((batch) => {
@@ -182,136 +195,142 @@ export function ContactsProvider({ children }) {
           return { ...batch, contactIds, contactCount: contactIds.length }
         })
       )
+      return true
     },
-    [fallBackToLocal]
+    []
   )
 
   const clearAllContacts = useCallback(async () => {
     if (storageModeRef.current === "cloud") {
       const { deleteCloudContact } = await loadCloudApi()
       for (const contact of contacts) {
-        const result = await deleteCloudContact(contact.id)
-        if (!result.ok) {
-          console.error("[Max OS Contacts] Cloud delete failed:", result.error)
-          fallBackToLocal()
-          break
-        }
+        const persisted = await persistCloudDelete({
+          storageModeRef,
+          remove: deleteCloudContact,
+          id: contact.id,
+          label: "Contacts",
+        })
+        if (!persisted.ok) return false
       }
     }
+
     setContacts([])
     setImportBatches([])
-  }, [contacts, fallBackToLocal])
+    return true
+  }, [contacts])
 
   const importContactsBatch = useCallback(
-    ({ fileName, items, duplicateActions = {} }) => {
-      const now = new Date().toISOString()
-      const batchId = generateId()
-      const createdIds = []
-      const toSync = []
-
-      setContacts((prev) => {
-        let next = [...prev]
-
-        items.forEach((item, index) => {
-          const action = duplicateActions[index] ?? "skip"
-          const { _duplicateTargetId, _isInFileDuplicate, ...contactData } = item
-
-          if (action === "skip" && (_duplicateTargetId || _isInFileDuplicate)) return
-
-          if (_duplicateTargetId && action === "replace") {
-            next = next.map((c) => {
-              if (c.id !== _duplicateTargetId) return c
-              const updated = {
-                ...c,
-                ...contactData,
-                importBatchId: batchId,
-                updatedAt: now,
-              }
-              toSync.push({ contact: updated, isUpdate: true })
-              return updated
-            })
-            if (!createdIds.includes(_duplicateTargetId)) {
-              createdIds.push(_duplicateTargetId)
-            }
-            return
-          }
-
-          if (_duplicateTargetId && action === "merge") {
-            next = next.map((c) => {
-              if (c.id !== _duplicateTargetId) return c
-              const merged = mergeContactData(c, contactData)
-              const updated = { ...merged, importBatchId: c.importBatchId ?? batchId }
-              toSync.push({ contact: updated, isUpdate: true })
-              if (!createdIds.includes(c.id)) createdIds.push(c.id)
-              return updated
-            })
-            return
-          }
-
-          const contact = {
-            ...EMPTY_CONTACT,
-            ...contactData,
-            importBatchId: batchId,
-            id: generateId(),
-            createdAt: now,
-            updatedAt: now,
-          }
-          createdIds.push(contact.id)
-          toSync.push({ contact, isUpdate: false })
-          next.unshift(contact)
-        })
-
-        return next
+    async ({ fileName, items, duplicateActions = {} }) => {
+      console.log("[Contacts] importContactsBatch() called", {
+        fileName,
+        itemCount: items.length,
+        storageMode: storageModeRef.current,
       })
 
-      if (storageModeRef.current === "cloud") {
-        void (async () => {
-          const { insertCloudContact, updateCloudContact } = await loadCloudApi()
-          for (const { contact, isUpdate } of toSync) {
-            const result = isUpdate
-              ? await updateCloudContact(contact)
-              : await insertCloudContact(contact)
-            if (!result.ok) {
-              console.error("[Max OS Contacts] Cloud import sync failed:", result.error)
-              fallBackToLocal()
-              return
-            }
-          }
-        })()
+      const { nextContacts, toSync, batch } = buildContactImportPlan({
+        items,
+        duplicateActions,
+        existingContacts: contacts,
+        fileName,
+      })
+
+      logContactsImportPlan({
+        toSyncCount: toSync.length,
+        batchId: batch.id,
+        storageMode: storageModeRef.current,
+      })
+
+      if (toSync.length === 0) {
+        throw new Error("No contacts selected for import.")
       }
 
-      const batch = {
-        id: batchId,
-        fileName: fileName || "import.csv",
-        contactCount: createdIds.length,
-        contactIds: createdIds,
-        importedAt: now,
+      const inCloudMode = storageModeRef.current === "cloud"
+
+      if (isSupabaseConfigured() && !inCloudMode) {
+        throw new Error(
+          "Contacts cloud sync is not ready. Wait for the CLOUD badge or sign in again before importing."
+        )
       }
+
+      if (inCloudMode) {
+        const accountIds = new Set(accounts.map((a) => a.id))
+        const brandIds = new Set(brands.map((b) => b.id))
+        const sanitizedSync = sanitizeContactImportBatch(toSync, { accountIds, brandIds })
+
+        logCloudAttemptingBatchInsert({
+          count: sanitizedSync.length,
+          storageModeRef,
+        })
+
+        const batchResult = await persistCloudBatch({
+          storageModeRef,
+          label: "Contacts",
+          runBatch: async () => {
+            const { importCloudContactsBatch } = await loadCloudApi()
+            return importCloudContactsBatch(sanitizedSync)
+          },
+        })
+
+        logCloudRemainingInCloudMode({
+          label: "Contacts",
+          storageModeRef,
+          context: "after persistCloudBatch",
+        })
+
+        if (!batchResult.ok) {
+          logCloudRemainingInCloudMode({
+            label: "Contacts",
+            storageModeRef,
+            context: "batch failed — before throw",
+          })
+          throw new Error(batchResult.error ?? "Cloud import failed")
+        }
+
+        const { initCloudContacts } = await loadCloudApi()
+        const refreshed = await initCloudContacts()
+        if (refreshed.ok) {
+          setContacts(refreshed.contacts)
+        } else {
+          setContacts(nextContacts)
+        }
+      } else {
+        setContacts(nextContacts)
+      }
+
+      logCloudRemainingInCloudMode({
+        label: "Contacts",
+        storageModeRef,
+        context: "import complete — before import history update",
+      })
 
       setImportBatches((prev) => [batch, ...prev])
       return batch
     },
-    [fallBackToLocal]
+    [contacts, accounts, brands]
   )
 
   const deleteImportBatch = useCallback(
     async (batchId) => {
       const batchContacts = contacts.filter((c) => c.importBatchId === batchId)
+
       if (storageModeRef.current === "cloud") {
         const { deleteCloudContact } = await loadCloudApi()
         for (const contact of batchContacts) {
-          const result = await deleteCloudContact(contact.id)
-          if (!result.ok) {
-            console.error("[Max OS Contacts] Cloud delete failed:", result.error)
-            fallBackToLocal()
-            break
-          }
+          const persisted = await persistCloudDelete({
+            storageModeRef,
+            remove: deleteCloudContact,
+            id: contact.id,
+            label: "Contacts",
+          })
+          if (!persisted.ok) return false
         }
       }
+
       setContacts((prev) => prev.filter((c) => c.importBatchId !== batchId))
       setImportBatches((prev) => prev.filter((b) => b.id !== batchId))
+      return true
     },
-    [contacts, fallBackToLocal]
+    [contacts]
   )
 
   const value = {

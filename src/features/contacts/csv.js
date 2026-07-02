@@ -4,6 +4,7 @@ import {
   findBrandByName,
   normalizeContactType,
 } from "./utils"
+import { logCsvRowsParsed, logCsvRowsToContacts } from "../../lib/debug/csvImportDiagnostics"
 
 const HEADER_MAP = {
   name: "name",
@@ -128,11 +129,13 @@ export function parseCsvText(text) {
     rows.push(row)
   }
 
-  return { headers, mappedFields, rows, errors }
+  const result = { headers, mappedFields, rows, errors }
+  logCsvRowsParsed(result)
+  return result
 }
 
 export function rowsToContacts(rows, accounts, brands) {
-  return rows.map((row) => {
+  const contacts = rows.map((row) => {
     const account = findAccountByName(accounts, row.company)
     const brand = findBrandByName(brands, row.brand)
 
@@ -156,4 +159,6 @@ export function rowsToContacts(rows, accounts, brands) {
       nextFollowUpDate: parseDate(row.nextFollowUpDate),
     }
   })
+  logCsvRowsToContacts(contacts)
+  return contacts
 }

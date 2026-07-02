@@ -25,6 +25,9 @@ export function describeCloudFailure(result) {
   if (code === "42703") {
     return `column mismatch (${error}) — run supabase/schema-extensions.sql to add missing columns`
   }
+  if (code === "PGRST204") {
+    return `column missing in Supabase schema cache (${error}) — run supabase/schema-extensions.sql, then reload the API schema in Supabase Dashboard → Settings → API`
+  }
   if (code === "42501" || code === "PGRST301") {
     return `RLS policy blocked access (${error ?? code}) — run supabase/schema-extensions.sql or enable auth`
   }
@@ -130,14 +133,31 @@ export function createCloudCrud({
 
   async function insert(entity) {
     const probe = await probeSupabaseClient()
-    if (!probe.ok) return { ok: false, error: probe.error }
+    if (!probe.ok) return { ok: false, error: probe.reason }
 
     const userId = await resolveScopeUserId()
+    if (!userId) {
+      return {
+        ok: false,
+        error: "Sign in required to save to Supabase",
+        code: "not_authenticated",
+      }
+    }
+
     const row = toRow(entity, userId)
+    if (table === "contacts") {
+      console.log("[Supabase] FINAL INSERT PAYLOAD", JSON.stringify(row, null, 2))
+    }
     const { data, error } = await probe.supabase.from(table).insert(row).select().single()
 
     if (error) {
-      return { ok: false, error: error.message, code: error.code }
+      return {
+        ok: false,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      }
     }
 
     return { ok: true, row: parseRow(data) }
@@ -145,9 +165,17 @@ export function createCloudCrud({
 
   async function update(entity) {
     const probe = await probeSupabaseClient()
-    if (!probe.ok) return { ok: false, error: probe.error }
+    if (!probe.ok) return { ok: false, error: probe.reason }
 
     const userId = await resolveScopeUserId()
+    if (!userId) {
+      return {
+        ok: false,
+        error: "Sign in required to save to Supabase",
+        code: "not_authenticated",
+      }
+    }
+
     const row = toRow(entity, userId)
     const rowId =
       primaryKey === "order_id"
@@ -161,7 +189,13 @@ export function createCloudCrud({
 
     const { data, error } = await query.select().single()
     if (error) {
-      return { ok: false, error: error.message, code: error.code }
+      return {
+        ok: false,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      }
     }
 
     return { ok: true, row: parseRow(data) }
@@ -169,9 +203,17 @@ export function createCloudCrud({
 
   async function remove(id) {
     const probe = await probeSupabaseClient()
-    if (!probe.ok) return { ok: false, error: probe.error }
+    if (!probe.ok) return { ok: false, error: probe.reason }
 
     const userId = await resolveScopeUserId()
+    if (!userId) {
+      return {
+        ok: false,
+        error: "Sign in required to save to Supabase",
+        code: "not_authenticated",
+      }
+    }
+
     let query = probe.supabase.from(table).delete().eq(primaryKey, id)
     if (userId) {
       query = query.eq("user_id", userId)
@@ -179,7 +221,13 @@ export function createCloudCrud({
 
     const { error } = await query
     if (error) {
-      return { ok: false, error: error.message, code: error.code }
+      return {
+        ok: false,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      }
     }
 
     return { ok: true }

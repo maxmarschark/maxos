@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { CALENDAR_STORAGE_KEY, EMPTY_CALENDAR_EVENT } from "./constants"
 import { CalendarContext } from "./calendar-context"
 
@@ -14,6 +20,7 @@ function loadCloudApi() {
 }
 
 export function CalendarProvider({ children }) {
+  const authReady = useAuthReady()
   const [events, setEvents] = useState(loadLocalEvents)
 
   const initCloud = useCallback(
@@ -28,26 +35,12 @@ export function CalendarProvider({ children }) {
     moduleName: "Calendar",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(CALENDAR_STORAGE_KEY, events)
   }, [events])
-
-  const syncEventToCloud = useCallback(
-    async (event) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudCalendarEvent } = await loadCloudApi()
-      const result = await updateCloudCalendarEvent(event)
-      if (!result.ok) {
-        console.error("[Max OS Calendar] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const getEvent = useCallback((id) => events.find((e) => e.id === id), [events])
 
@@ -62,54 +55,65 @@ export function CalendarProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudCalendarEvent } = await loadCloudApi()
-        const result = await insertCloudCalendarEvent(event)
-        if (result.ok) {
-          setEvents((prev) => [result.event, ...prev])
-          return result.event
-        }
-        console.error("[Max OS Calendar] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudCalendarEvent } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudCalendarEvent,
+        entity: event,
+        label: "Calendar",
+      })
 
-      setEvents((prev) => [event, ...prev])
-      return event
+      if (!persisted.ok) return null
+      setEvents((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateEvent = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedEvent = null
+    async (id, data) => {
+      const existing = events.find((e) => e.id === id)
+      if (!existing) return false
 
-      setEvents((prev) =>
-        prev.map((e) => {
-          if (e.id !== id) return e
-          updatedEvent = { ...e, ...data, updatedAt: now }
-          return updatedEvent
-        })
-      )
-
-      if (updatedEvent) {
-        void syncEventToCloud(updatedEvent)
+      const updatedEvent = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudCalendarEvent } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudCalendarEvent,
+        entity: updatedEvent,
+        label: "Calendar",
+      })
+
+      if (!persisted.ok) return false
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? persisted.entity : e))
+      )
+      return true
     },
-    [syncEventToCloud]
+    [events, fallBackToLocal]
   )
 
   const deleteEvent = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudCalendarEvent } = await loadCloudApi()
-        const result = await deleteCloudCalendarEvent(id)
-        if (!result.ok) {
-          console.error("[Max OS Calendar] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudCalendarEvent } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudCalendarEvent,
+        id,
+        label: "Calendar",
+      })
+
+      if (!persisted.ok) return false
       setEvents((prev) => prev.filter((e) => e.id !== id))
+      return true
     },
     [fallBackToLocal]
   )

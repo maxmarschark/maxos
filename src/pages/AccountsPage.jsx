@@ -16,7 +16,7 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
-import { sortRows } from "../lib/tableSort"
+import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterAccounts(accounts, { search, stateFilter }) {
   let result = [...accounts]
@@ -82,18 +82,25 @@ export function AccountsPage() {
     setFormOpen(true)
   }
 
-  function handleFormSubmit(data) {
+  async function handleFormSubmit(data) {
     if (editingAccount) {
-      updateAccount(editingAccount.id, data)
-      toast(`Updated ${data.businessName}`)
+      await handleCloudSave(() => updateAccount(editingAccount.id, data), {
+        onSuccess: () => toast(`Updated ${data.businessName}`),
+        onError: () => toast("Failed to update account", "error"),
+      })
     } else {
-      addAccount(data)
-      toast(`Added ${data.businessName}`)
+      await handleCloudSave(() => addAccount(data), {
+        onSuccess: () => toast(`Added ${data.businessName}`),
+        onError: () => toast("Failed to add account", "error"),
+      })
     }
   }
 
-  function handleDelete() {
-    deleteAccount(deletingAccount.id)
+  async function handleDelete() {
+    const ok = await handleCloudSave(() => deleteAccount(deletingAccount.id), {
+      onError: () => toast("Failed to delete account", "error"),
+    })
+    if (!ok) return
     toast(`Deleted ${deletingAccount.businessName}`)
   }
 

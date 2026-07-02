@@ -61,6 +61,9 @@ export async function insertCloudAccount(account) {
   if (!supabase) {
     return { ok: false, error: "Supabase client unavailable" }
   }
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
+  }
 
   const row = transformAccount(account, userId)
   const { data, error } = await supabase.from("accounts").insert(row).select().single()
@@ -78,12 +81,12 @@ export async function updateCloudAccount(account) {
   if (!supabase) {
     return { ok: false, error: "Supabase client unavailable" }
   }
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
+  }
 
   const row = transformAccount(account, userId)
-  let query = supabase.from("accounts").update(row).eq("id", account.id)
-  if (userId) {
-    query = query.eq("user_id", userId)
-  }
+  let query = supabase.from("accounts").update(row).eq("id", account.id).eq("user_id", userId)
 
   const { data, error } = await query.select().single()
 
@@ -100,11 +103,11 @@ export async function deleteCloudAccount(accountId) {
   if (!supabase) {
     return { ok: false, error: "Supabase client unavailable" }
   }
-
-  let query = supabase.from("accounts").delete().eq("id", accountId)
-  if (userId) {
-    query = query.eq("user_id", userId)
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
   }
+
+  let query = supabase.from("accounts").delete().eq("id", accountId).eq("user_id", userId)
 
   const { error } = await query
 

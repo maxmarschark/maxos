@@ -15,7 +15,7 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
-import { sortRows } from "../lib/tableSort"
+import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterBrands(brands, { search }) {
   if (!search.trim()) return [...brands]
@@ -63,18 +63,25 @@ export function BrandsPage() {
     setFormOpen(true)
   }
 
-  function handleFormSubmit(data) {
+  async function handleFormSubmit(data) {
     if (editingBrand) {
-      updateBrand(editingBrand.id, data)
-      toast(`Updated ${data.brandName}`)
+      await handleCloudSave(() => updateBrand(editingBrand.id, data), {
+        onSuccess: () => toast(`Updated ${data.brandName}`),
+        onError: () => toast("Failed to update brand", "error"),
+      })
     } else {
-      addBrand(data)
-      toast(`Added ${data.brandName}`)
+      await handleCloudSave(() => addBrand(data), {
+        onSuccess: () => toast(`Added ${data.brandName}`),
+        onError: () => toast("Failed to add brand", "error"),
+      })
     }
   }
 
-  function handleDelete() {
-    deleteBrand(deletingBrand.id)
+  async function handleDelete() {
+    const ok = await handleCloudSave(() => deleteBrand(deletingBrand.id), {
+      onError: () => toast("Failed to delete brand", "error"),
+    })
+    if (!ok) return
     toast(`Deleted ${deletingBrand.brandName}`)
   }
 

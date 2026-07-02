@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import { persistCloudUpdate } from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { useOrders } from "../orders/useOrders"
 import { COMMISSIONS_STORAGE_KEY, EMPTY_COMMISSION_META } from "./constants"
 import { CommissionsContext } from "./commissions-context"
@@ -20,6 +22,7 @@ function loadCloudApi() {
 }
 
 export function CommissionsProvider({ children }) {
+  const authReady = useAuthReady()
   const { rawOrders, accounts, brands } = useOrders()
   const [storedMeta, setStoredMeta] = useState(loadStoredMeta)
 
@@ -35,6 +38,7 @@ export function CommissionsProvider({ children }) {
     moduleName: "Commissions",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   const effectiveMeta = useMemo(() => {
@@ -55,40 +59,33 @@ export function CommissionsProvider({ children }) {
     saveToStorage(COMMISSIONS_STORAGE_KEY, effectiveMeta)
   }, [effectiveMeta])
 
-  const syncMetaToCloud = useCallback(
-    async (meta) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { upsertCloudCommission } = await loadCloudApi()
-      const result = await upsertCloudCommission(meta)
-      if (!result.ok) {
-        console.error("[Max OS Commissions] Cloud upsert failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
-
   const upsertMeta = useCallback(
-    (orderId, updates) => {
-      let updatedMeta = null
+    async (orderId, updates) => {
+      const existing = storedMeta.find((m) => m.orderId === orderId)
+      const updatedMeta = existing
+        ? { ...existing, ...updates, orderId }
+        : { orderId, ...EMPTY_COMMISSION_META, ...updates }
 
-      setStoredMeta((prev) => {
-        const existing = prev.find((m) => m.orderId === orderId)
-        if (existing) {
-          updatedMeta = { ...existing, ...updates, orderId }
-          return prev.map((m) => (m.orderId === orderId ? updatedMeta : m))
-        }
-        updatedMeta = { orderId, ...EMPTY_COMMISSION_META, ...updates }
-        return [...prev, updatedMeta]
+      const { upsertCloudCommission } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: upsertCloudCommission,
+        entity: updatedMeta,
+        label: "Commissions",
       })
 
-      if (updatedMeta) {
-        void syncMetaToCloud(updatedMeta)
-      }
+      if (!persisted.ok) return false
+      setStoredMeta((prev) => {
+        const found = prev.find((m) => m.orderId === orderId)
+        if (found) {
+          return prev.map((m) => (m.orderId === orderId ? persisted.entity : m))
+        }
+        return [...prev, persisted.entity]
+      })
+      return true
     },
-    [syncMetaToCloud]
+    [storedMeta, fallBackToLocal]
   )
 
   const updateCommission = useCallback(

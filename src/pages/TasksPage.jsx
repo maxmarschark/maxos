@@ -27,7 +27,7 @@ import {
   DUE_DATE_FILTERS,
   PRIORITY_RANK,
 } from "../features/tasks/constants"
-import { filterTasks } from "../features/tasks/utils"
+import { handleCloudSave } from "../lib/handleCloudSave"
 
 const SORT_FIELD_TYPES = {
   dueDate: "date",
@@ -88,24 +88,34 @@ export function TasksPage() {
     setFormOpen(true)
   }
 
-  function handleFormSubmit(data) {
+  async function handleFormSubmit(data) {
     if (editingTask) {
-      updateTask(editingTask.id, data)
-      toast(`Updated "${data.title}"`)
+      await handleCloudSave(() => updateTask(editingTask.id, data), {
+        onSuccess: () => toast(`Updated "${data.title}"`),
+        onError: () => toast("Failed to update task", "error"),
+      })
     } else {
-      addTask(data)
-      toast(`Created "${data.title}"`)
+      await handleCloudSave(() => addTask(data), {
+        onSuccess: () => toast(`Created "${data.title}"`),
+        onError: () => toast("Failed to create task", "error"),
+      })
     }
   }
 
-  function handleMarkComplete(task) {
+  async function handleMarkComplete(task) {
     if (task.status === "Complete") return
-    markComplete(task.id)
+    const ok = await handleCloudSave(() => markComplete(task.id), {
+      onError: () => toast("Failed to complete task", "error"),
+    })
+    if (!ok) return
     toast(`Completed "${task.title}"`)
   }
 
-  function handleDelete() {
-    deleteTask(deletingTask.id)
+  async function handleDelete() {
+    const ok = await handleCloudSave(() => deleteTask(deletingTask.id), {
+      onError: () => toast("Failed to delete task", "error"),
+    })
+    if (!ok) return
     toast(`Deleted "${deletingTask.title}"`)
   }
 

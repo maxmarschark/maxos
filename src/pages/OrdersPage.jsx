@@ -16,7 +16,7 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { sortRows } from "../lib/tableSort"
-import { ORDER_STATUSES } from "../features/orders/constants"
+import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterOrders(orders, { search, statusFilter, brandFilter, accountFilter }) {
   let result = [...orders]
@@ -95,18 +95,25 @@ export function OrdersPage() {
     setFormOpen(true)
   }
 
-  function handleFormSubmit(data) {
+  async function handleFormSubmit(data) {
     if (editingOrder) {
-      updateOrder(editingOrder.id, data)
-      toast(`Updated order #${data.orderNumber}`)
+      await handleCloudSave(() => updateOrder(editingOrder.id, data), {
+        onSuccess: () => toast(`Updated order #${data.orderNumber}`),
+        onError: () => toast("Failed to update order", "error"),
+      })
     } else {
-      addOrder(data)
-      toast(`Created order #${data.orderNumber}`)
+      await handleCloudSave(() => addOrder(data), {
+        onSuccess: () => toast(`Created order #${data.orderNumber}`),
+        onError: () => toast("Failed to create order", "error"),
+      })
     }
   }
 
-  function handleDelete() {
-    deleteOrder(deletingOrder.id)
+  async function handleDelete() {
+    const ok = await handleCloudSave(() => deleteOrder(deletingOrder.id), {
+      onError: () => toast("Failed to delete order", "error"),
+    })
+    if (!ok) return
     toast(`Deleted order #${deletingOrder.orderNumber}`)
   }
 

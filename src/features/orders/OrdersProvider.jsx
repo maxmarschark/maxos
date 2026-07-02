@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { useAccounts } from "../accounts/useAccounts"
 import { useBrands } from "../brands/useBrands"
 import { ORDERS_STORAGE_KEY, EMPTY_ORDER } from "./constants"
@@ -18,6 +24,7 @@ function loadCloudApi() {
 }
 
 export function OrdersProvider({ children }) {
+  const authReady = useAuthReady()
   const { accounts } = useAccounts()
   const { brands } = useBrands()
 
@@ -35,26 +42,12 @@ export function OrdersProvider({ children }) {
     moduleName: "Orders",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(ORDERS_STORAGE_KEY, orders)
   }, [orders])
-
-  const syncOrderToCloud = useCallback(
-    async (order) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudOrder } = await loadCloudApi()
-      const result = await updateCloudOrder(order)
-      if (!result.ok) {
-        console.error("[Max OS Orders] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const enrichedOrders = useMemo(
     () => enrichOrders(orders, accounts, brands),
@@ -89,59 +82,65 @@ export function OrdersProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudOrder } = await loadCloudApi()
-        const result = await insertCloudOrder(order)
-        if (result.ok) {
-          setOrders((prev) => [result.order, ...prev])
-          return result.order
-        }
-        console.error("[Max OS Orders] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudOrder } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudOrder,
+        entity: order,
+        label: "Orders",
+      })
 
-      setOrders((prev) => [order, ...prev])
-      return order
+      if (!persisted.ok) return null
+      setOrders((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateOrder = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedOrder = null
+    async (id, data) => {
+      const existing = orders.find((o) => o.id === id)
+      if (!existing) return false
 
-      setOrders((prev) =>
-        prev.map((o) => {
-          if (o.id !== id) return o
-          const merged = { ...o, ...data, updatedAt: now }
-          merged.commissionAmount = calcCommissionAmount(
-            merged.orderAmount,
-            merged.commissionPercent
-          )
-          updatedOrder = merged
-          return merged
-        })
+      const merged = { ...existing, ...data, updatedAt: new Date().toISOString() }
+      merged.commissionAmount = calcCommissionAmount(
+        merged.orderAmount,
+        merged.commissionPercent
       )
 
-      if (updatedOrder) {
-        void syncOrderToCloud(updatedOrder)
-      }
+      const { updateCloudOrder } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudOrder,
+        entity: merged,
+        label: "Orders",
+      })
+
+      if (!persisted.ok) return false
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? persisted.entity : o))
+      )
+      return true
     },
-    [syncOrderToCloud]
+    [orders, fallBackToLocal]
   )
 
   const deleteOrder = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudOrder } = await loadCloudApi()
-        const result = await deleteCloudOrder(id)
-        if (!result.ok) {
-          console.error("[Max OS Orders] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudOrder } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudOrder,
+        id,
+        label: "Orders",
+      })
+
+      if (!persisted.ok) return false
       setOrders((prev) => prev.filter((o) => o.id !== id))
+      return true
     },
     [fallBackToLocal]
   )

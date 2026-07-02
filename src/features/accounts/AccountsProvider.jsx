@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from "react"
 import { generateId } from "../../lib/id"
 import { loadFromStorage, saveToStorage } from "../../lib/storage"
 import { useCloudBootstrap } from "../../lib/supabase/useCloudBootstrap"
+import {
+  persistCloudDelete,
+  persistCloudInsert,
+  persistCloudUpdate,
+} from "../../lib/supabase/cloudPersist"
+import { useAuthReady } from "../auth/useAuthReady"
 import { ACCOUNTS_STORAGE_KEY, EMPTY_ACCOUNT } from "./constants"
 import { SEED_ACCOUNTS } from "./seed"
 import { AccountsContext } from "./accounts-context"
@@ -15,6 +21,7 @@ function loadCloudApi() {
 }
 
 export function AccountsProvider({ children }) {
+  const authReady = useAuthReady()
   const [accounts, setAccounts] = useState(loadLocalAccounts)
 
   const initCloud = useCallback(
@@ -29,26 +36,12 @@ export function AccountsProvider({ children }) {
     moduleName: "Accounts",
     initCloud,
     onCloudLoaded,
+    authReady,
   })
 
   useEffect(() => {
     saveToStorage(ACCOUNTS_STORAGE_KEY, accounts)
   }, [accounts])
-
-  const syncAccountToCloud = useCallback(
-    async (account) => {
-      if (storageModeRef.current !== "cloud") return true
-      const { updateCloudAccount } = await loadCloudApi()
-      const result = await updateCloudAccount(account)
-      if (!result.ok) {
-        console.error("[Max OS Accounts] Cloud update failed:", result.error)
-        fallBackToLocal()
-        return false
-      }
-      return true
-    },
-    [fallBackToLocal]
-  )
 
   const getAccount = useCallback(
     (id) => accounts.find((a) => a.id === id),
@@ -68,75 +61,91 @@ export function AccountsProvider({ children }) {
         updatedAt: now,
       }
 
-      if (storageModeRef.current === "cloud") {
-        const { insertCloudAccount } = await loadCloudApi()
-        const result = await insertCloudAccount(account)
-        if (result.ok) {
-          setAccounts((prev) => [result.account, ...prev])
-          return result.account
-        }
-        console.error("[Max OS Accounts] Cloud insert failed:", result.error)
-        fallBackToLocal()
-      }
+      const { insertCloudAccount } = await loadCloudApi()
+      const persisted = await persistCloudInsert({
+        storageModeRef,
+        fallBackToLocal,
+        insert: insertCloudAccount,
+        entity: account,
+        label: "Accounts",
+      })
 
-      setAccounts((prev) => [account, ...prev])
-      return account
+      if (!persisted.ok) return null
+      setAccounts((prev) => [persisted.entity, ...prev])
+      return persisted.entity
     },
     [fallBackToLocal]
   )
 
   const updateAccount = useCallback(
-    (id, data) => {
-      const now = new Date().toISOString()
-      let updatedAccount = null
+    async (id, data) => {
+      const existing = accounts.find((a) => a.id === id)
+      if (!existing) return false
 
-      setAccounts((prev) =>
-        prev.map((a) => {
-          if (a.id !== id) return a
-          updatedAccount = { ...a, ...data, updatedAt: now }
-          return updatedAccount
-        })
-      )
-
-      if (updatedAccount) {
-        void syncAccountToCloud(updatedAccount)
+      const updatedAccount = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
       }
+
+      const { updateCloudAccount } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudAccount,
+        entity: updatedAccount,
+        label: "Accounts",
+      })
+
+      if (!persisted.ok) return false
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === id ? persisted.entity : a))
+      )
+      return true
     },
-    [syncAccountToCloud]
+    [accounts, fallBackToLocal]
   )
 
   const deleteAccount = useCallback(
     async (id) => {
-      if (storageModeRef.current === "cloud") {
-        const { deleteCloudAccount } = await loadCloudApi()
-        const result = await deleteCloudAccount(id)
-        if (!result.ok) {
-          console.error("[Max OS Accounts] Cloud delete failed:", result.error)
-          fallBackToLocal()
-        }
-      }
+      const { deleteCloudAccount } = await loadCloudApi()
+      const persisted = await persistCloudDelete({
+        storageModeRef,
+        fallBackToLocal,
+        remove: deleteCloudAccount,
+        id,
+        label: "Accounts",
+      })
+
+      if (!persisted.ok) return false
       setAccounts((prev) => prev.filter((a) => a.id !== id))
+      return true
     },
     [fallBackToLocal]
   )
 
   const mutateAccount = useCallback(
-    (accountId, updater) => {
-      let updatedAccount = null
+    async (accountId, updater) => {
+      const existing = accounts.find((a) => a.id === accountId)
+      if (!existing) return false
 
+      const updatedAccount = updater(existing)
+      const { updateCloudAccount } = await loadCloudApi()
+      const persisted = await persistCloudUpdate({
+        storageModeRef,
+        fallBackToLocal,
+        update: updateCloudAccount,
+        entity: updatedAccount,
+        label: "Accounts",
+      })
+
+      if (!persisted.ok) return false
       setAccounts((prev) =>
-        prev.map((a) => {
-          if (a.id !== accountId) return a
-          updatedAccount = updater(a)
-          return updatedAccount
-        })
+        prev.map((a) => (a.id === accountId ? persisted.entity : a))
       )
-
-      if (updatedAccount) {
-        void syncAccountToCloud(updatedAccount)
-      }
+      return true
     },
-    [syncAccountToCloud]
+    [accounts, fallBackToLocal]
   )
 
   const addNote = useCallback(

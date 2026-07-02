@@ -73,6 +73,10 @@ export async function insertCloudBrand(brand) {
   if (!probe.ok) return { ok: false, error: probe.reason }
 
   const userId = await resolveScopeUserId()
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
+  }
+
   const row = transformBrand(brand, userId)
   const { data, error } = await probe.supabase.from("brands").insert(row).select().single()
   if (error) return { ok: false, error: error.message }
@@ -88,9 +92,12 @@ export async function updateCloudBrand(brand) {
   if (!probe.ok) return { ok: false, error: probe.reason }
 
   const userId = await resolveScopeUserId()
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
+  }
+
   const row = transformBrand(brand, userId)
-  let query = probe.supabase.from("brands").update(row).eq("id", brand.id)
-  if (userId) query = query.eq("user_id", userId)
+  const query = probe.supabase.from("brands").update(row).eq("id", brand.id).eq("user_id", userId)
   const { data, error } = await query.select().single()
   if (error) return { ok: false, error: error.message }
 
@@ -103,9 +110,12 @@ export async function deleteCloudBrand(brandId) {
   if (!probe.ok) return { ok: false, error: probe.reason }
 
   const userId = await resolveScopeUserId()
+  if (!userId) {
+    return { ok: false, error: "Sign in required to save to Supabase", code: "not_authenticated" }
+  }
+
   await probe.supabase.from("brand_products").delete().eq("brand_id", brandId)
-  let query = probe.supabase.from("brands").delete().eq("id", brandId)
-  if (userId) query = query.eq("user_id", userId)
+  const query = probe.supabase.from("brands").delete().eq("id", brandId).eq("user_id", userId)
   const { error } = await query
   if (error) return { ok: false, error: error.message }
   return { ok: true }

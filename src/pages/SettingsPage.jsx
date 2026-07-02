@@ -130,6 +130,13 @@ export function SettingsPage() {
 
   function handleConfirmRestore() {
     if (!pendingBackup) return
+    if (storageMode === "cloud") {
+      toast(
+        "Backup restore only updates local cache. In cloud mode, data is managed in Supabase.",
+        "error"
+      )
+      return
+    }
     try {
       restoreBackup(pendingBackup)
       toast("Backup restored — reloading…")
@@ -140,6 +147,13 @@ export function SettingsPage() {
   }
 
   function handleClearAll() {
+    if (storageMode === "cloud") {
+      toast(
+        "Clear all only removes local cache. In cloud mode, delete records in the app or Supabase dashboard.",
+        "error"
+      )
+      return
+    }
     clearAllAppData()
     toast("All app data cleared — reloading…")
     window.setTimeout(() => window.location.reload(), 800)

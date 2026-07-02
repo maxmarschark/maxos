@@ -16,6 +16,7 @@ import {
 import { parseCsvText, rowsToContacts } from "../csv"
 import { detectImportDuplicates } from "../duplicates"
 import { getContactName } from "../utils"
+import { logContactsRowsReceived } from "../../../lib/debug/csvImportDiagnostics"
 
 export function CsvImportModal({
   open,
@@ -30,6 +31,8 @@ export function CsvImportModal({
   const [fileName, setFileName] = useState("pasted-import.csv")
   const [parseResult, setParseResult] = useState(null)
   const [duplicateActions, setDuplicateActions] = useState({})
+  const [importError, setImportError] = useState(null)
+  const [importing, setImporting] = useState(false)
 
   const previewContacts = useMemo(() => {
     if (!parseResult?.rows?.length) return []
@@ -76,6 +79,8 @@ export function CsvImportModal({
     setFileName("pasted-import.csv")
     setParseResult(null)
     setDuplicateActions({})
+    setImportError(null)
+    setImporting(false)
     if (fileRef.current) fileRef.current.value = ""
     onClose()
   }
@@ -84,7 +89,7 @@ export function CsvImportModal({
     setDuplicateActions((prev) => ({ ...prev, [index]: action }))
   }
 
-  function handleImport() {
+  async function handleImport() {
     if (previewContacts.length === 0) return
 
     const items = previewContacts.map((contact, index) => {
@@ -98,12 +103,26 @@ export function CsvImportModal({
       return contact
     })
 
-    onImport({
-      fileName,
-      items,
-      duplicateActions,
-    })
-    handleClose()
+    setImportError(null)
+    setImporting(true)
+    try {
+      logContactsRowsReceived({
+        fileName,
+        itemCount: items.length,
+        items,
+        duplicateActions,
+      })
+      await onImport({
+        fileName,
+        items,
+        duplicateActions,
+      })
+      handleClose()
+    } catch (err) {
+      setImportError(err?.message ?? "Import failed")
+    } finally {
+      setImporting(false)
+    }
   }
 
   return (
@@ -119,8 +138,8 @@ export function CsvImportModal({
           <Button variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleImport} disabled={importCount === 0}>
-            Import {importCount > 0 ? `${importCount} ` : ""}Contacts
+          <Button variant="primary" onClick={handleImport} disabled={importCount === 0 || importing}>
+            {importing ? "Importing…" : `Import ${importCount > 0 ? `${importCount} ` : ""}Contacts`}
           </Button>
         </>
       }
@@ -156,6 +175,12 @@ export function CsvImportModal({
             className="min-h-[100px] font-mono text-xs"
           />
         </div>
+
+        {importError && (
+          <div className="rounded-lg border border-red-900/50 bg-red-950/20 px-3 py-2">
+            <p className="text-xs text-red-400">{importError}</p>
+          </div>
+        )}
 
         {parseResult?.errors?.length > 0 && (
           <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2">

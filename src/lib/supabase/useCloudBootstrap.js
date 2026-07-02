@@ -1,26 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { isSupabaseConfigured } from "./env"
 import { createLogPrefix, describeCloudFailure } from "./cloudRepository"
+import { logFallBackToLocal, logSetMode } from "../debug/csvImportDiagnostics"
 
-export function useCloudBootstrap({ moduleName, initCloud, onCloudLoaded }) {
+export function useCloudBootstrap({ moduleName, initCloud, onCloudLoaded, authReady = true }) {
   const [storageMode, setStorageMode] = useState("local")
   const storageModeRef = useRef("local")
   const LOG_PREFIX = createLogPrefix(moduleName)
 
-  const setMode = useCallback((mode) => {
-    storageModeRef.current = mode
-    setStorageMode(mode)
-  }, [])
+  const setMode = useCallback(
+    (mode) => {
+      const previousMode = storageModeRef.current
+      logSetMode(moduleName, mode, previousMode)
+      storageModeRef.current = mode
+      setStorageMode(mode)
+    },
+    [moduleName]
+  )
 
   const fallBackToLocal = useCallback(
     (reason) => {
+      logFallBackToLocal(moduleName, reason)
       console.warn(`${LOG_PREFIX} LOCAL — falling back to localStorage${reason ? ` (${reason})` : ""}`)
       setMode("local")
     },
-    [LOG_PREFIX, setMode]
+    [LOG_PREFIX, moduleName, setMode]
   )
 
   useEffect(() => {
+    if (!authReady) {
+      return
+    }
+
     let cancelled = false
 
     async function bootstrap() {
@@ -52,7 +63,7 @@ export function useCloudBootstrap({ moduleName, initCloud, onCloudLoaded }) {
     return () => {
       cancelled = true
     }
-  }, [LOG_PREFIX, initCloud, onCloudLoaded, setMode])
+  }, [LOG_PREFIX, initCloud, onCloudLoaded, setMode, authReady])
 
   return { storageMode, storageModeRef, setMode, fallBackToLocal }
 }

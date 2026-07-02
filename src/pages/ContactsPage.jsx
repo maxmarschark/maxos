@@ -22,7 +22,7 @@ import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
 import { sortRows } from "../lib/tableSort"
 import { CONTACT_TYPES } from "../features/contacts/constants"
-import { downloadContactsCsv, getExportFileName } from "../features/contacts/export"
+import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterContacts(contacts, { search, typeFilter }) {
   let result = [...contacts]
@@ -136,20 +136,37 @@ export function ContactsPage() {
     setImportOpen(true)
   }
 
-  function handleFormSubmit(data) {
-    const name = `${data.firstName} ${data.lastName}`.trim()
-    if (editingContact) {
-      updateContact(editingContact.id, data)
-      toast(`Updated ${name}`)
-    } else {
-      addContact(data)
-      toast(`Added ${name}`)
+  async function handleCsvImport(payload) {
+    try {
+      const batch = await importContactsBatch(payload)
+      toast(`Imported ${batch.contactCount} contact${batch.contactCount !== 1 ? "s" : ""}`)
+    } catch (err) {
+      toast(err?.message ?? "Import failed", "error")
+      throw err
     }
   }
 
-  function handleBulkDelete() {
+  async function handleFormSubmit(data) {
+    const name = `${data.firstName} ${data.lastName}`.trim()
+    if (editingContact) {
+      await handleCloudSave(() => updateContact(editingContact.id, data), {
+        onSuccess: () => toast(`Updated ${name}`),
+        onError: () => toast("Failed to update contact", "error"),
+      })
+    } else {
+      await handleCloudSave(() => addContact(data), {
+        onSuccess: () => toast(`Added ${name}`),
+        onError: () => toast("Failed to add contact", "error"),
+      })
+    }
+  }
+
+  async function handleBulkDelete() {
     const count = selectedIds.size
-    deleteContacts([...selectedIds])
+    const ok = await handleCloudSave(() => deleteContacts([...selectedIds]), {
+      onError: () => toast("Failed to delete contacts", "error"),
+    })
+    if (!ok) return
     setSelectedIds(new Set())
     toast(`Deleted ${count} contact${count !== 1 ? "s" : ""}`)
   }
@@ -158,14 +175,20 @@ export function ContactsPage() {
     downloadContactsCsv(contacts, getExportFileName())
   }
 
-  function handleClearAll() {
-    clearAllContacts()
+  async function handleClearAll() {
+    const ok = await handleCloudSave(() => clearAllContacts(), {
+      onError: () => toast("Failed to clear contacts", "error"),
+    })
+    if (!ok) return
     setSelectedIds(new Set())
     toast("All contacts cleared")
   }
 
-  function handleDeleteContact() {
-    deleteContact(deletingContact.id)
+  async function handleDeleteContact() {
+    const ok = await handleCloudSave(() => deleteContact(deletingContact.id), {
+      onError: () => toast("Failed to delete contact", "error"),
+    })
+    if (!ok) return
     toast(`Deleted ${deletingContact.fullName}`)
   }
 
@@ -291,7 +314,7 @@ export function ContactsPage() {
       <CsvImportModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImport={importContactsBatch}
+        onImport={handleCsvImport}
         accounts={accounts}
         brands={brands}
         existingContacts={contacts}

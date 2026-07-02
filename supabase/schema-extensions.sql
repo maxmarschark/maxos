@@ -70,6 +70,7 @@ create table if not exists public.contacts (
   user_id uuid not null references auth.users (id) on delete cascade,
   first_name text not null default '',
   last_name text not null default '',
+  name text not null default '',
   account_id uuid references public.accounts (id) on delete set null,
   brand_id uuid references public.brands (id) on delete set null,
   company text not null default '',
@@ -172,6 +173,23 @@ alter table public.brand_products add column if not exists created_at timestampt
 alter table public.brand_products add column if not exists updated_at timestamptz;
 alter table public.contacts add column if not exists created_at timestamptz;
 alter table public.contacts add column if not exists updated_at timestamptz;
+alter table public.contacts add column if not exists first_name text not null default '';
+alter table public.contacts add column if not exists last_name text not null default '';
+alter table public.contacts add column if not exists name text not null default '';
+alter table public.contacts add column if not exists account_id uuid references public.accounts (id) on delete set null;
+alter table public.contacts add column if not exists brand_id uuid references public.brands (id) on delete set null;
+alter table public.contacts add column if not exists company text not null default '';
+alter table public.contacts add column if not exists role text not null default '';
+alter table public.contacts add column if not exists type text not null default 'Buyer';
+alter table public.contacts add column if not exists phone text not null default '';
+alter table public.contacts add column if not exists email text not null default '';
+alter table public.contacts add column if not exists preferred_contact_method text not null default 'Call';
+alter table public.contacts add column if not exists city text not null default '';
+alter table public.contacts add column if not exists state text not null default '';
+alter table public.contacts add column if not exists notes text not null default '';
+alter table public.contacts add column if not exists last_contact_date date;
+alter table public.contacts add column if not exists next_follow_up_date date;
+alter table public.contacts add column if not exists import_batch_id text;
 alter table public.orders add column if not exists created_at timestamptz;
 alter table public.orders add column if not exists updated_at timestamptz;
 alter table public.tasks add column if not exists created_at timestamptz;

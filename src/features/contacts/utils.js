@@ -25,8 +25,10 @@ export function resolveBrandName(brandId, brands) {
 
 export function getContactName(contact) {
   const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ")
-  return name || "—"
+  return name || contact.name || contact.fullName || "—"
 }
+
+export { resolveContactName } from "../../lib/supabase/contactName"
 
 export function enrichContact(contact, accounts, brands) {
   const accountName = resolveAccountName(contact.accountId, accounts)
