@@ -1,30 +1,32 @@
-export function compareValues(aVal, bVal, sortDir) {
-  if (aVal < bVal) return sortDir === "asc" ? -1 : 1
-  if (aVal > bVal) return sortDir === "asc" ? 1 : -1
-  return 0
+export function sortRows(rows, sortConfig, getValue) {
+  if (!sortConfig?.key) return rows
+  return [...rows].sort((a, b) => {
+    const aValue = getValue(a, sortConfig.key)
+    const bValue = getValue(b, sortConfig.key)
+    if (aValue == null && bValue == null) return 0
+    if (aValue == null) return 1
+    if (bValue == null) return -1
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return sortConfig.direction === "desc" ? bValue - aValue : aValue - bValue
+    }
+    return sortConfig.direction === "desc"
+      ? String(bValue).localeCompare(String(aValue))
+      : String(aValue).localeCompare(String(bValue))
+  })
 }
 
-export function sortRows(rows, sortField, sortDir, fieldTypes = {}) {
-  const result = [...rows]
-  const type = fieldTypes[sortField] ?? "string"
+export function getTableSortValue(row, key, fieldTypes = {}) {
+  const type = fieldTypes[key]
+  const val = row[key]
+  if (type === "number") return Number(val) || 0
+  if (type === "date") return val ? new Date(val).getTime() : null
+  return val ?? null
+}
 
-  result.sort((a, b) => {
-    let aVal = a[sortField]
-    let bVal = b[sortField]
-
-    if (type === "number") {
-      aVal = Number(aVal) || 0
-      bVal = Number(bVal) || 0
-    } else if (type === "date") {
-      aVal = aVal ? new Date(aVal).getTime() : 0
-      bVal = bVal ? new Date(bVal).getTime() : 0
-    } else {
-      aVal = String(aVal ?? "").toLowerCase()
-      bVal = String(bVal ?? "").toLowerCase()
-    }
-
-    return compareValues(aVal, bVal, sortDir)
-  })
-
-  return result
+export function sortRowsByField(rows, sortField, sortDir, fieldTypes = {}) {
+  return sortRows(
+    rows,
+    { key: sortField, direction: sortDir },
+    (row, key) => getTableSortValue(row, key, fieldTypes)
+  )
 }

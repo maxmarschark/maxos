@@ -1,5 +1,6 @@
 import { createHashRouter } from "react-router-dom"
 import { AppShell } from "../components/layout/AppShell"
+import { RouteErrorBoundary } from "../components/RouteErrorBoundary"
 import { TodayPage } from "../pages/TodayPage"
 import { AccountsLayout } from "../features/accounts/AccountsLayout"
 import { AccountsPage } from "../pages/AccountsPage"
@@ -23,6 +24,7 @@ export const router = createHashRouter([
   {
     path: "/",
     element: <AppShell />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,

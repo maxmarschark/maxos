@@ -15,6 +15,7 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
+import { sortRowsByField } from "../lib/tableSort"
 import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterBrands(brands, { search }) {
@@ -48,7 +49,7 @@ export function BrandsPage() {
 
   const filtered = useMemo(() => {
     const rows = filterBrands(brands, { search })
-    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+    return sortRowsByField(rows, sortField, sortDir, SORT_FIELD_TYPES)
   }, [brands, search, sortField, sortDir])
 
   const pagination = usePagination(filtered, pageSize)

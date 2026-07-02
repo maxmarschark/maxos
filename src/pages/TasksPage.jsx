@@ -19,7 +19,8 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
-import { sortRows } from "../lib/tableSort"
+import { sortRowsByField } from "../lib/tableSort"
+import { filterTasks } from "../features/tasks/utils"
 import { getTodayISO } from "../features/today/utils"
 import {
   TASK_STATUSES,
@@ -40,7 +41,7 @@ function sortByField(tasks, sortField, sortDir) {
       return sortDir === "asc" ? -diff : diff
     })
   }
-  return sortRows(tasks, sortField, sortDir, SORT_FIELD_TYPES)
+  return sortRowsByField(tasks, sortField, sortDir, SORT_FIELD_TYPES)
 }
 
 export function TasksPage() {

@@ -15,7 +15,8 @@ import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
-import { sortRows } from "../lib/tableSort"
+import { sortRowsByField } from "../lib/tableSort"
+import { ORDER_STATUSES } from "../features/orders/constants"
 import { handleCloudSave } from "../lib/handleCloudSave"
 
 function filterOrders(orders, { search, statusFilter, brandFilter, accountFilter }) {
@@ -71,7 +72,7 @@ export function OrdersPage() {
       brandFilter,
       accountFilter,
     })
-    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+    return sortRowsByField(rows, sortField, sortDir, SORT_FIELD_TYPES)
   }, [orders, search, statusFilter, brandFilter, accountFilter, sortField, sortDir])
 
   const pagination = usePagination(filtered, pageSize)

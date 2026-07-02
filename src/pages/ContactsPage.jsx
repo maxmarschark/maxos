@@ -20,7 +20,7 @@ import { Pagination } from "../components/ui/Pagination"
 import { useToast } from "../components/ui/useToast"
 import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
-import { sortRows } from "../lib/tableSort"
+import { sortRowsByField } from "../lib/tableSort"
 import { CONTACT_TYPES } from "../features/contacts/constants"
 import { handleCloudSave } from "../lib/handleCloudSave"
 
@@ -86,7 +86,7 @@ export function ContactsPage() {
 
   const filtered = useMemo(() => {
     const rows = filterContacts(contacts, { search, typeFilter })
-    return sortRows(rows, sortField, sortDir, SORT_FIELD_TYPES)
+    return sortRowsByField(rows, sortField, sortDir, SORT_FIELD_TYPES)
   }, [contacts, search, typeFilter, sortField, sortDir])
 
   const pagination = usePagination(filtered, pageSize)
