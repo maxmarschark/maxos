@@ -17,7 +17,8 @@ import { ContactProfilePage } from "../pages/ContactProfilePage"
 import { CommissionsPage } from "../pages/CommissionsPage"
 import { SettingsPage } from "../pages/SettingsPage"
 import { TasksPage } from "../pages/TasksPage"
-import { DealsPage, ReportsPage } from "../pages/modules"
+import { ReportsPage } from "../pages/modules"
+import { DealsPage } from "../pages/DealsPage"
 import { CalendarPage } from "../pages/CalendarPage"
 
 export const router = createHashRouter([

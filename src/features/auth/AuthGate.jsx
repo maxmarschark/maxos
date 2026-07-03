@@ -1,5 +1,6 @@
 import { useAuth } from "./useAuth"
 import { LoginPage } from "../../pages/LoginPage"
+import { hasOAuthCallbackInUrl } from "../../lib/supabase/auth"
 
 function AuthLoadingScreen() {
   return (
@@ -19,7 +20,7 @@ export function AuthGate({ children }) {
     return children
   }
 
-  if (loading) {
+  if (loading || (!session && hasOAuthCallbackInUrl())) {
     return <AuthLoadingScreen />
   }
 

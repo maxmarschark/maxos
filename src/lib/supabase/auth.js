@@ -22,6 +22,17 @@ function getUrlOAuthParams(url) {
   return params
 }
 
+/** True when the URL still carries Supabase OAuth callback params (PKCE code, etc.). */
+export function hasOAuthCallbackInUrl(href = typeof window !== "undefined" ? window.location.href : "") {
+  if (!href) return false
+  const params = getUrlOAuthParams(new URL(href))
+  return params.has("code") || params.has("error")
+}
+
+/** Dedupe PKCE exchange across React StrictMode remounts and concurrent bootstrap calls. */
+let pendingCodeExchange = null
+let lastExchangedCode = null
+
 function cleanOAuthParamsFromUrl() {
   const url = new URL(window.location.href)
   url.searchParams.delete("code")
@@ -39,7 +50,10 @@ function cleanOAuthParamsFromUrl() {
     hashParams.delete("error")
     hashParams.delete("error_description")
     const remaining = hashParams.toString()
-    url.hash = remaining ? `#${routePart}?${remaining}` : `#${routePart}`
+    const route = routePart || "/"
+    url.hash = remaining ? `#${route}?${remaining}` : `#${route}`
+  } else if (!url.hash || url.hash === "#") {
+    url.hash = "#/"
   }
 
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`)
@@ -65,12 +79,35 @@ export async function bootstrapAuthSession() {
   }
 
   if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    cleanOAuthParamsFromUrl()
+    if (lastExchangedCode === code) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      cleanOAuthParamsFromUrl()
+      return { session, error: null }
+    }
+
+    if (!pendingCodeExchange) {
+      pendingCodeExchange = supabase.auth
+        .exchangeCodeForSession(code)
+        .then((result) => {
+          if (!result.error) {
+            lastExchangedCode = code
+          }
+          return result
+        })
+        .finally(() => {
+          pendingCodeExchange = null
+        })
+    }
+
+    const { data, error } = await pendingCodeExchange
     if (error) {
       console.warn(`${LOG_PREFIX} OAuth code exchange failed:`, error.message)
       return { session: null, error: error.message }
     }
+
+    cleanOAuthParamsFromUrl()
     return { session: data.session, error: null }
   }
 

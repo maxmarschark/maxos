@@ -26,15 +26,22 @@ export function AuthProvider({ children }) {
     let cancelled = false
 
     async function initAuth() {
-      const { session: initialSession, error } = await bootstrapAuthSession()
-      if (cancelled) return
+      try {
+        const { session: initialSession, error } = await bootstrapAuthSession()
+        if (cancelled) return
 
-      if (error) {
-        console.warn("[Max OS Auth] OAuth bootstrap failed:", error)
+        if (error) {
+          console.warn("[Max OS Auth] OAuth bootstrap failed:", error)
+        }
+
+        if (initialSession) {
+          setSession(initialSession)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
-
-      setSession(initialSession)
-      setLoading(false)
     }
 
     void initAuth()
@@ -42,10 +49,8 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!cancelled) {
-        setSession(nextSession)
-        setLoading(false)
-      }
+      if (cancelled) return
+      setSession(nextSession)
     })
 
     return () => {

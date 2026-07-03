@@ -1,20 +1,15 @@
 import { ModulePage } from "./ModulePage"
 import { getRouteById } from "../config/routes"
-import { useDeals } from "../features/deals/useDeals"
 import { useCloudSync } from "../features/cloud/useCloudSync"
+
+export { DealsPage } from "./DealsPage"
 
 function createModulePage(id, actionLabel) {
   return function Page() {
     const route = getRouteById(id)
-    const { storageMode: dealsStorageMode } = useDeals()
     const { connected } = useCloudSync()
 
-    const storageMode =
-      id === "deals"
-        ? dealsStorageMode
-        : connected
-          ? "cloud"
-          : "local"
+    const storageMode = connected ? "cloud" : "local"
 
     return (
       <ModulePage
@@ -28,5 +23,4 @@ function createModulePage(id, actionLabel) {
   }
 }
 
-export const DealsPage = createModulePage("deals", "New Deal")
 export const ReportsPage = createModulePage("reports")
