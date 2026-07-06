@@ -118,6 +118,8 @@ create table if not exists public.orders (
   brand_id uuid not null references public.brands (id) on delete restrict,
   order_date date,
   products_notes text not null default '',
+  subtotal_amount numeric(12, 2) not null default 0,
+  discount_amount numeric(12, 2) not null default 0,
   order_amount numeric(12, 2) not null default 0,
   commission_percent numeric(5, 2) not null default 0,
   commission_amount numeric(12, 2) not null default 0,
@@ -133,6 +135,29 @@ create index if not exists orders_user_id_idx on public.orders (user_id);
 create index if not exists orders_account_id_idx on public.orders (account_id);
 create index if not exists orders_brand_id_idx on public.orders (brand_id);
 create index if not exists orders_order_number_idx on public.orders (order_number);
+
+-- ---------------------------------------------------------------------------
+-- order_items (line items for orders)
+-- ---------------------------------------------------------------------------
+create table if not exists public.order_items (
+  id uuid primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  order_id uuid not null references public.orders (id) on delete cascade,
+  brand_id uuid references public.brands (id) on delete set null,
+  product_id uuid references public.brand_products (id) on delete set null,
+  product_name text not null default '',
+  sku text not null default '',
+  quantity numeric(12, 2) not null default 1,
+  unit_price numeric(12, 2) not null default 0,
+  price_type text not null default 'Distributor Price',
+  line_total numeric(12, 2) not null default 0,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create index if not exists order_items_order_id_idx on public.order_items (order_id);
+create index if not exists order_items_user_id_idx on public.order_items (user_id);
+create index if not exists order_items_brand_id_idx on public.order_items (brand_id);
 
 -- ---------------------------------------------------------------------------
 -- commissions (metadata keyed by order_id in localStorage)
@@ -209,6 +234,7 @@ alter table public.brands enable row level security;
 alter table public.brand_products enable row level security;
 alter table public.contacts enable row level security;
 alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
 alter table public.commissions enable row level security;
 alter table public.tasks enable row level security;
 alter table public.activity_events enable row level security;
@@ -262,6 +288,16 @@ create policy "orders_select_own" on public.orders for select using (auth.uid() 
 create policy "orders_insert_own" on public.orders for insert with check (auth.uid() = user_id);
 create policy "orders_update_own" on public.orders for update using (auth.uid() = user_id);
 create policy "orders_delete_own" on public.orders for delete using (auth.uid() = user_id);
+
+-- order_items
+drop policy if exists "order_items_select_own" on public.order_items;
+drop policy if exists "order_items_insert_own" on public.order_items;
+drop policy if exists "order_items_update_own" on public.order_items;
+drop policy if exists "order_items_delete_own" on public.order_items;
+create policy "order_items_select_own" on public.order_items for select using (auth.uid() = user_id);
+create policy "order_items_insert_own" on public.order_items for insert with check (auth.uid() = user_id);
+create policy "order_items_update_own" on public.order_items for update using (auth.uid() = user_id);
+create policy "order_items_delete_own" on public.order_items for delete using (auth.uid() = user_id);
 
 -- commissions
 drop policy if exists "commissions_select_own" on public.commissions;

@@ -11,6 +11,13 @@ export const ORDER_STATUSES = [
 
 export const PAYMENT_STATUSES = ["Unpaid", "Partially Paid", "Paid"]
 
+export const PRICE_TYPES = [
+  "Distributor Price",
+  "Wholesale Price",
+  "MSRP",
+  "Custom",
+]
+
 export const ORDER_STATUS_VARIANTS = {
   Draft: "default",
   Sent: "primary",
@@ -40,6 +47,9 @@ export const EMPTY_ORDER = {
   brandId: "",
   orderDate: new Date().toISOString().slice(0, 10),
   productsNotes: "",
+  lineItems: [],
+  subtotalAmount: 0,
+  discountAmount: 0,
   orderAmount: 0,
   commissionPercent: 0,
   commissionAmount: 0,
@@ -47,4 +57,14 @@ export const EMPTY_ORDER = {
   paymentStatus: "Unpaid",
   paymentDueDate: null,
   notes: "",
+}
+
+export const EMPTY_LINE_ITEM = {
+  productId: "",
+  productName: "",
+  sku: "",
+  quantity: 1,
+  unitPrice: 0,
+  priceType: "Distributor Price",
+  lineTotal: 0,
 }

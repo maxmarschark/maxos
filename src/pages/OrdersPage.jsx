@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Package, Plus } from "lucide-react"
 import { useOrders } from "../features/orders/useOrders"
 import { OrdersTable } from "../features/orders/components/OrdersTable"
-import { OrderFormModal } from "../features/orders/components/OrderFormModal"
+import { OrderBuilderModal } from "../features/orders/components/OrderBuilderModal"
 import { DeleteOrderModal } from "../features/orders/components/DeleteOrderModal"
 import { Button } from "../components/ui/Button"
 import { SearchInput } from "../components/ui/SearchInput"
@@ -127,7 +127,7 @@ export function OrdersPage() {
         badge={<StorageModeBadge mode={storageMode} />}
         actions={
           <Button variant="primary" size="sm" icon={Plus} onClick={handleAdd}>
-            Add Order
+            New Order
           </Button>
         }
       />
@@ -187,7 +187,7 @@ export function OrdersPage() {
                 ? "Create your first order to track fulfillment and commissions."
                 : "Try adjusting your search or filters."
             }
-            actionLabel={orders.length === 0 ? "Add Order" : undefined}
+            actionLabel={orders.length === 0 ? "New Order" : undefined}
             onAction={orders.length === 0 ? handleAdd : undefined}
           />
         </Card>
@@ -215,7 +215,7 @@ export function OrdersPage() {
         </>
       )}
 
-      <OrderFormModal
+      <OrderBuilderModal
         open={formOpen}
         onClose={() => {
           setFormOpen(false)

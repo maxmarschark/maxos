@@ -281,7 +281,7 @@ export function parseContactRow(row) {
   }
 }
 
-export function parseOrderRow(row) {
+export function parseOrderRow(row, lineItems = []) {
   return {
     id: row.id,
     orderNumber: row.order_number ?? "",
@@ -289,6 +289,9 @@ export function parseOrderRow(row) {
     brandId: row.brand_id ?? "",
     orderDate: row.order_date ?? null,
     productsNotes: row.products_notes ?? "",
+    lineItems: (lineItems ?? []).map(normalizeOrderItem),
+    subtotalAmount: Number(row.subtotal_amount) || 0,
+    discountAmount: Number(row.discount_amount) || 0,
     orderAmount: Number(row.order_amount) || 0,
     commissionPercent: Number(row.commission_percent) || 0,
     commissionAmount: Number(row.commission_amount) || 0,
@@ -298,6 +301,89 @@ export function parseOrderRow(row) {
     notes: row.notes ?? "",
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
+  }
+}
+
+function isAppOrderItem(row) {
+  return (
+    row &&
+    (Object.prototype.hasOwnProperty.call(row, "productName") ||
+      Object.prototype.hasOwnProperty.call(row, "unitPrice") ||
+      Object.prototype.hasOwnProperty.call(row, "priceType")) &&
+    !Object.prototype.hasOwnProperty.call(row, "product_name")
+  )
+}
+
+export function normalizeOrderItem(row) {
+  if (!row) {
+    return {
+      id: "",
+      orderId: "",
+      brandId: "",
+      productId: "",
+      productName: "",
+      sku: "",
+      quantity: 1,
+      unitPrice: 0,
+      priceType: "Distributor Price",
+      lineTotal: 0,
+    }
+  }
+
+  if (isAppOrderItem(row)) {
+    return {
+      id: row.id,
+      orderId: row.orderId ?? "",
+      brandId: row.brandId ?? "",
+      productId: row.productId ?? "",
+      productName: row.productName ?? "",
+      sku: row.sku ?? "",
+      quantity: Number(row.quantity) || 0,
+      unitPrice: Number(row.unitPrice) || 0,
+      priceType: row.priceType ?? "Distributor Price",
+      lineTotal: Number(row.lineTotal) || 0,
+      createdAt: row.createdAt ?? null,
+      updatedAt: row.updatedAt ?? null,
+    }
+  }
+
+  return parseOrderItemRow(row)
+}
+
+export function parseOrderItemRow(row) {
+  return {
+    id: row.id,
+    orderId: row.order_id ?? row.orderId ?? "",
+    brandId: row.brand_id ?? row.brandId ?? "",
+    productId: row.product_id ?? row.productId ?? "",
+    productName: row.product_name ?? row.productName ?? "",
+    sku: row.sku ?? "",
+    quantity: Number(row.quantity) || 0,
+    unitPrice: Number(row.unit_price ?? row.unitPrice) || 0,
+    priceType: row.price_type ?? row.priceType ?? "Distributor Price",
+    lineTotal: Number(row.line_total ?? row.lineTotal) || 0,
+    createdAt: row.created_at ?? row.createdAt ?? null,
+    updatedAt: row.updated_at ?? row.updatedAt ?? null,
+  }
+}
+
+export function transformOrderItem(item, orderId, brandId, userId) {
+  const normalized = normalizeOrderItem(item)
+  const now = new Date().toISOString()
+  return {
+    id: normalized.id,
+    order_id: orderId,
+    brand_id: brandId,
+    ...(userId ? { user_id: userId } : {}),
+    product_id: normalized.productId || null,
+    product_name: normalized.productName,
+    sku: normalized.sku,
+    quantity: Number(normalized.quantity) || 0,
+    unit_price: Number(normalized.unitPrice) || 0,
+    price_type: normalized.priceType ?? "Distributor Price",
+    line_total: Number(normalized.lineTotal) || 0,
+    created_at: toTimestamp(normalized.createdAt) ?? now,
+    updated_at: toTimestamp(normalized.updatedAt) ?? now,
   }
 }
 
@@ -417,6 +503,8 @@ export function transformOrder(order, userId) {
     brand_id: order.brandId,
     order_date: toDate(order.orderDate),
     products_notes: order.productsNotes ?? "",
+    subtotal_amount: Number(order.subtotalAmount) || 0,
+    discount_amount: Number(order.discountAmount) || 0,
     order_amount: Number(order.orderAmount) || 0,
     commission_percent: Number(order.commissionPercent) || 0,
     commission_amount: Number(order.commissionAmount) || 0,

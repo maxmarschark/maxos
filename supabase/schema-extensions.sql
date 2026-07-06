@@ -108,6 +108,22 @@ create table if not exists public.orders (
   updated_at timestamptz
 );
 
+create table if not exists public.order_items (
+  id uuid primary key,
+  user_id uuid references auth.users (id) on delete cascade,
+  order_id uuid not null references public.orders (id) on delete cascade,
+  brand_id uuid references public.brands (id) on delete set null,
+  product_id uuid references public.brand_products (id) on delete set null,
+  product_name text not null default '',
+  sku text not null default '',
+  quantity numeric(12, 2) not null default 1,
+  unit_price numeric(12, 2) not null default 0,
+  price_type text not null default 'Distributor Price',
+  line_total numeric(12, 2) not null default 0,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
 create table if not exists public.commissions (
   order_id uuid primary key references public.orders (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -162,6 +178,9 @@ create index if not exists brand_products_brand_id_idx on public.brand_products 
 create index if not exists brand_products_user_id_idx on public.brand_products (user_id);
 create index if not exists contacts_user_id_idx on public.contacts (user_id);
 create index if not exists orders_user_id_idx on public.orders (user_id);
+create index if not exists order_items_order_id_idx on public.order_items (order_id);
+create index if not exists order_items_user_id_idx on public.order_items (user_id);
+create index if not exists order_items_brand_id_idx on public.order_items (brand_id);
 create index if not exists commissions_user_id_idx on public.commissions (user_id);
 create index if not exists tasks_user_id_idx on public.tasks (user_id);
 create index if not exists activity_events_user_id_idx on public.activity_events (user_id);
@@ -200,6 +219,10 @@ alter table public.contacts add column if not exists next_follow_up_date date;
 alter table public.contacts add column if not exists import_batch_id text;
 alter table public.orders add column if not exists created_at timestamptz;
 alter table public.orders add column if not exists updated_at timestamptz;
+alter table public.orders add column if not exists subtotal_amount numeric(12, 2) not null default 0;
+alter table public.orders add column if not exists discount_amount numeric(12, 2) not null default 0;
+alter table public.order_items add column if not exists created_at timestamptz;
+alter table public.order_items add column if not exists updated_at timestamptz;
 alter table public.tasks add column if not exists created_at timestamptz;
 alter table public.tasks add column if not exists updated_at timestamptz;
 alter table public.tasks add column if not exists completed_at timestamptz;
@@ -210,6 +233,7 @@ alter table public.brands enable row level security;
 alter table public.brand_products enable row level security;
 alter table public.contacts enable row level security;
 alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
 alter table public.commissions enable row level security;
 alter table public.tasks enable row level security;
 alter table public.activity_events enable row level security;
@@ -333,6 +357,12 @@ alter table public.orders alter column user_id drop not null;
 drop policy if exists "orders_publishable_access" on public.orders;
 create policy "orders_publishable_access"
   on public.orders for all to anon, authenticated using (true) with check (true);
+
+alter table public.order_items drop constraint if exists order_items_user_id_fkey;
+alter table public.order_items alter column user_id drop not null;
+drop policy if exists "order_items_publishable_access" on public.order_items;
+create policy "order_items_publishable_access"
+  on public.order_items for all to anon, authenticated using (true) with check (true);
 
 alter table public.commissions drop constraint if exists commissions_user_id_fkey;
 alter table public.commissions alter column user_id drop not null;

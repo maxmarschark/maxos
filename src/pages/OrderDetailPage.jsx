@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { useOrders } from "../features/orders/useOrders"
 import { useCommissions } from "../features/commissions/useCommissions"
 import { useContacts } from "../features/contacts/useContacts"
-import { OrderFormModal } from "../features/orders/components/OrderFormModal"
+import { OrderBuilderModal } from "../features/orders/components/OrderBuilderModal"
 import { DeleteOrderModal } from "../features/orders/components/DeleteOrderModal"
 import { Button } from "../components/ui/Button"
 import { Badge } from "../components/ui/Badge"
@@ -178,12 +178,62 @@ export function OrderDetailPage() {
           </dl>
         </Card>
 
-        {order.productsNotes && (
+        {order.lineItems?.length > 0 ? (
+          <Card padding="md" className="space-y-4 lg:col-span-2">
+            <h2 className="text-sm font-medium text-zinc-300">Products Purchased</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-sm">
+                <thead className="border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-500">
+                  <tr>
+                    <th className="pb-2 pr-3 font-medium">Product</th>
+                    <th className="pb-2 pr-3 font-medium">SKU</th>
+                    <th className="pb-2 pr-3 font-medium text-right">Qty</th>
+                    <th className="pb-2 pr-3 font-medium">Price Type</th>
+                    <th className="pb-2 pr-3 font-medium text-right">Unit Price</th>
+                    <th className="pb-2 font-medium text-right">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {order.lineItems.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-2 pr-3 text-zinc-200">{item.productName}</td>
+                      <td className="py-2 pr-3 text-zinc-400">{item.sku || "—"}</td>
+                      <td className="py-2 pr-3 text-right text-zinc-300">{item.quantity}</td>
+                      <td className="py-2 pr-3 text-zinc-400">{item.priceType}</td>
+                      <td className="py-2 pr-3 text-right text-zinc-300">
+                        {formatCurrencyDetailed(item.unitPrice)}
+                      </td>
+                      <td className="py-2 text-right font-medium text-zinc-200">
+                        {formatCurrencyDetailed(item.lineTotal)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {(order.subtotalAmount > 0 || order.discountAmount > 0) && (
+              <dl className="space-y-2 border-t border-zinc-800 pt-3 text-sm">
+                {order.subtotalAmount > 0 && (
+                  <div className="flex justify-between text-zinc-400">
+                    <dt>Subtotal</dt>
+                    <dd className="text-zinc-200">{formatCurrency(order.subtotalAmount)}</dd>
+                  </div>
+                )}
+                {order.discountAmount > 0 && (
+                  <div className="flex justify-between text-zinc-400">
+                    <dt>Discount</dt>
+                    <dd className="text-zinc-200">−{formatCurrency(order.discountAmount)}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+          </Card>
+        ) : order.productsNotes ? (
           <Card padding="md" className="space-y-2 lg:col-span-2">
             <h2 className="text-sm font-medium text-zinc-300">Products / Notes</h2>
             <p className="text-sm leading-relaxed text-zinc-400">{order.productsNotes}</p>
           </Card>
-        )}
+        ) : null}
 
         {order.notes && (
           <Card padding="md" className="space-y-2 lg:col-span-2">
@@ -193,7 +243,7 @@ export function OrderDetailPage() {
         )}
       </div>
 
-      <OrderFormModal
+      <OrderBuilderModal
         open={editOpen}
         onClose={() => setEditOpen(false)}
         onSubmit={(data) => updateOrder(order.id, data)}
