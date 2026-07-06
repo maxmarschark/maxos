@@ -200,7 +200,7 @@ export function BrandsProvider({ children }) {
       setBrands((prev) =>
         prev.map((b) => (b.id === brandId ? persisted.entity : b))
       )
-      return product
+      return persisted.entity.products.find((p) => p.id === product.id) ?? product
     },
     [brands, fallBackToLocal]
   )

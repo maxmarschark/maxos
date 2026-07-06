@@ -156,46 +156,94 @@ export function parseBrandRow(row, products = []) {
     notes: row.notes ?? "",
     monthlySales: Number(row.monthly_sales) || 0,
     noteEntries: Array.isArray(row.note_entries) ? row.note_entries : [],
-    products: products.map(parseBrandProductRow),
+    products: (products ?? []).map(normalizeBrandProduct),
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
   }
 }
 
+function isAppBrandProduct(row) {
+  return (
+    row &&
+    (Object.prototype.hasOwnProperty.call(row, "productName") ||
+      Object.prototype.hasOwnProperty.call(row, "distributorPrice") ||
+      Object.prototype.hasOwnProperty.call(row, "wholesalePrice")) &&
+    !Object.prototype.hasOwnProperty.call(row, "product_name")
+  )
+}
+
+/** Normalizes a brand product from either Supabase row or in-app shape. */
+export function normalizeBrandProduct(row) {
+  if (!row) {
+    return {
+      id: "",
+      brandId: "",
+      productName: "",
+      sku: "",
+      category: "",
+      distributorPrice: 0,
+      wholesalePrice: 0,
+      msrp: 0,
+      commissionOverride: null,
+      notes: "",
+    }
+  }
+
+  if (isAppBrandProduct(row)) {
+    return {
+      id: row.id,
+      brandId: row.brandId ?? "",
+      productName: row.productName ?? "",
+      sku: row.sku ?? "",
+      category: row.category ?? "",
+      distributorPrice: Number(row.distributorPrice) || 0,
+      wholesalePrice: Number(row.wholesalePrice) || 0,
+      msrp: Number(row.msrp) || 0,
+      commissionOverride:
+        row.commissionOverride === null || row.commissionOverride === undefined
+          ? null
+          : Number(row.commissionOverride),
+      notes: row.notes ?? "",
+    }
+  }
+
+  return parseBrandProductRow(row)
+}
+
 export function parseBrandProductRow(row) {
   return {
     id: row.id,
-    brandId: row.brand_id ?? "",
-    productName: row.product_name ?? "",
+    brandId: row.brand_id ?? row.brandId ?? "",
+    productName: row.product_name ?? row.productName ?? row.name ?? "",
     sku: row.sku ?? "",
     category: row.category ?? "",
-    distributorPrice: Number(row.distributor_price) || 0,
-    wholesalePrice: Number(row.wholesale_price) || 0,
+    distributorPrice: Number(row.distributor_price ?? row.distributorPrice) || 0,
+    wholesalePrice: Number(row.wholesale_price ?? row.wholesalePrice) || 0,
     msrp: Number(row.msrp) || 0,
     commissionOverride:
       row.commission_override === null || row.commission_override === undefined
-        ? null
+        ? row.commissionOverride === null || row.commissionOverride === undefined
+          ? null
+          : Number(row.commissionOverride)
         : Number(row.commission_override),
     notes: row.notes ?? "",
   }
 }
 
 export function transformBrandProduct(product, brandId, userId) {
+  const normalized = normalizeBrandProduct(product)
   return {
-    id: product.id,
+    id: normalized.id,
     brand_id: brandId,
     ...(userId ? { user_id: userId } : {}),
-    product_name: product.productName ?? "",
-    sku: product.sku ?? "",
-    category: product.category ?? "",
-    distributor_price: Number(product.distributorPrice) || 0,
-    wholesale_price: Number(product.wholesalePrice) || 0,
-    msrp: Number(product.msrp) || 0,
-    commission_override:
-      product.commissionOverride === null || product.commissionOverride === undefined
-        ? null
-        : Number(product.commissionOverride),
-    notes: product.notes ?? "",
+    product_name: normalized.productName,
+    sku: normalized.sku,
+    category: normalized.category,
+    distributor_price: normalized.distributorPrice,
+    wholesale_price: normalized.wholesalePrice,
+    msrp: normalized.msrp,
+    commission_override: normalized.commissionOverride,
+    notes: normalized.notes,
   }
 }
 

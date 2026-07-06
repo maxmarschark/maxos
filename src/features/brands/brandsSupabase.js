@@ -62,10 +62,31 @@ async function syncBrandProducts(brand, userId) {
   await probe.supabase.from("brand_products").delete().eq("brand_id", brand.id)
   if (brand.products?.length) {
     const rows = brand.products.map((p) => transformBrandProduct(p, brand.id, userId))
+    console.info(`${LOG_PREFIX} syncing ${rows.length} product(s) for brand ${brand.id}`, rows)
     const { error } = await probe.supabase.from("brand_products").insert(rows)
-    if (error) return { ok: false, error: error.message }
+    if (error) {
+      console.warn(`${LOG_PREFIX} brand_products insert failed:`, error.message)
+      return { ok: false, error: error.message, code: error.code }
+    }
   }
   return { ok: true }
+}
+
+async function fetchBrandWithProducts(brandRow, userId) {
+  const probe = await probeSupabaseClient()
+  if (!probe.ok) {
+    return parseBrandRow(brandRow, [])
+  }
+
+  let query = probe.supabase.from("brand_products").select("*").eq("brand_id", brandRow.id)
+  if (userId) query = query.eq("user_id", userId)
+  const { data: productRows, error } = await query
+  if (error) {
+    console.warn(`${LOG_PREFIX} brand_products fetch failed after save:`, error.message)
+    return parseBrandRow(brandRow, [])
+  }
+
+  return parseBrandRow(brandRow, productRows ?? [])
 }
 
 export async function insertCloudBrand(brand) {
@@ -81,10 +102,13 @@ export async function insertCloudBrand(brand) {
   const { data, error } = await probe.supabase.from("brands").insert(row).select().single()
   if (error) return { ok: false, error: error.message }
 
-  await syncBrandProducts(brand, userId)
-  const refreshed = await fetchCloudBrands()
-  const saved = refreshed.ok ? refreshed.brands.find((b) => b.id === brand.id) : parseBrandRow(data, brand.products ?? [])
-  return { ok: true, brand: saved ?? parseBrandRow(data, brand.products ?? []) }
+  const syncResult = await syncBrandProducts(brand, userId)
+  if (!syncResult.ok) {
+    return { ok: false, error: syncResult.error, code: syncResult.code }
+  }
+
+  const saved = await fetchBrandWithProducts(data, userId)
+  return { ok: true, brand: saved }
 }
 
 export async function updateCloudBrand(brand) {
@@ -101,8 +125,13 @@ export async function updateCloudBrand(brand) {
   const { data, error } = await query.select().single()
   if (error) return { ok: false, error: error.message }
 
-  await syncBrandProducts(brand, userId)
-  return { ok: true, brand: parseBrandRow(data, brand.products ?? []) }
+  const syncResult = await syncBrandProducts(brand, userId)
+  if (!syncResult.ok) {
+    return { ok: false, error: syncResult.error, code: syncResult.code }
+  }
+
+  const saved = await fetchBrandWithProducts(data, userId)
+  return { ok: true, brand: saved }
 }
 
 export async function deleteCloudBrand(brandId) {
