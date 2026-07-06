@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react"
+import { ArrowLeft, Pencil, Sparkles, Trash2 } from "lucide-react"
 import { useBrands } from "../features/brands/useBrands"
 import { BrandFormModal } from "../features/brands/components/BrandFormModal"
 import { DeleteBrandModal } from "../features/brands/components/DeleteBrandModal"
@@ -22,6 +22,7 @@ import { useContacts } from "../features/contacts/useContacts"
 import { NotesTab } from "../features/brands/components/tabs/NotesTab"
 import { AssetsTab } from "../features/brand-files/components/AssetsTab"
 import { useBrandFiles } from "../features/brand-files/useBrandFiles"
+import { BrandAssistantPanel } from "../features/brand-assistant/components/BrandAssistantPanel"
 
 export function BrandProfilePage() {
   const { id } = useParams()
@@ -49,6 +50,7 @@ export function BrandProfilePage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
   if (!brand) {
     return (
@@ -117,6 +119,14 @@ export function BrandProfilePage() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Sparkles}
+              onClick={() => setAssistantOpen(true)}
+            >
+              Ask Max OS
+            </Button>
             <Button variant="secondary" size="sm" icon={Pencil} onClick={() => setEditOpen(true)}>
               Edit
             </Button>
@@ -170,6 +180,12 @@ export function BrandProfilePage() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
         brandName={brand.brandName}
+      />
+
+      <BrandAssistantPanel
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        brand={brand}
       />
     </div>
   )
