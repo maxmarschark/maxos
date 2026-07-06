@@ -20,6 +20,8 @@ import { getBrandMetrics } from "../lib/relationships"
 import { BrandContactsTab } from "../features/contacts/components/BrandContactsTab"
 import { useContacts } from "../features/contacts/useContacts"
 import { NotesTab } from "../features/brands/components/tabs/NotesTab"
+import { AssetsTab } from "../features/brand-files/components/AssetsTab"
+import { useBrandFiles } from "../features/brand-files/useBrandFiles"
 
 export function BrandProfilePage() {
   const { id } = useParams()
@@ -39,6 +41,7 @@ export function BrandProfilePage() {
   const { getContactsByBrand } = useContacts()
 
   const brand = getBrand(id)
+  const { files: brandFiles } = useBrandFiles(id)
   const metrics = useMemo(
     () => (brand ? getBrandMetrics(brand.id, orders, commissions) : null),
     [brand, orders, commissions]
@@ -70,6 +73,7 @@ export function BrandProfilePage() {
     { id: "accounts", label: "Accounts", count: getActiveAccountCount(brand.brandName) },
     { id: "orders", label: "Orders", count: getOrdersByBrand(brand.id).length },
     { id: "contacts", label: "Contacts", count: getContactsByBrand(brand.id).length },
+    { id: "assets", label: "Assets", count: brandFiles.length },
     { id: "notes", label: "Notes", count: brand.noteEntries.length + (brand.notes ? 1 : 0) },
   ]
 
@@ -144,6 +148,7 @@ export function BrandProfilePage() {
         {activeTab === "accounts" && <AccountsTab brandName={brand.brandName} />}
         {activeTab === "orders" && <BrandOrdersTab brandId={brand.id} />}
         {activeTab === "contacts" && <BrandContactsTab brandId={brand.id} />}
+        {activeTab === "assets" && <AssetsTab brandId={brand.id} brandName={brand.brandName} />}
         {activeTab === "notes" && (
           <NotesTab
             brand={brand}
