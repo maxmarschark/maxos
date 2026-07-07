@@ -42,16 +42,21 @@ function ActionRowContent({ action }) {
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600/20 text-[11px] font-semibold text-indigo-400">
         {action.order}
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="text-[13px] font-medium text-zinc-100">{action.label}</p>
-          <Badge variant={priorityVariants[action.priority]} className="text-[10px]">
-            {priorityLabels[action.priority]}
-          </Badge>
+      <div className="flex min-w-0 flex-1 gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[13px] font-medium leading-snug text-zinc-100">
+            {action.label}
+          </p>
+          {action.detail && (
+            <p className="mt-0.5 truncate text-xs text-zinc-500">{action.detail}</p>
+          )}
         </div>
-        {action.detail && (
-          <p className="mt-0.5 truncate text-xs text-zinc-500">{action.detail}</p>
-        )}
+        <Badge
+          variant={priorityVariants[action.priority]}
+          className="shrink-0 self-start text-[10px] normal-case tracking-normal"
+        >
+          {priorityLabels[action.priority]}
+        </Badge>
       </div>
     </>
   )

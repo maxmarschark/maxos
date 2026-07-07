@@ -7,6 +7,13 @@ import { GMAIL_STATUS } from "../../gmail/constants"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
 import { formatDate } from "../../../lib/format"
+import {
+  dashboardCardClass,
+  dashboardFooterClass,
+  dashboardListClass,
+  dashboardRowClass,
+} from "./dashboardLayout"
+import { cn } from "../../../lib/cn"
 
 const LIMIT = 5
 
@@ -16,16 +23,17 @@ function EmailRow({ email }) {
       href={email.webLink}
       target="_blank"
       rel="noopener noreferrer"
-      className="block rounded-lg border border-zinc-800/60 bg-zinc-950/40 px-3 py-2 transition-colors hover:border-zinc-700/80"
+      className={cn(dashboardRowClass, "block transition-colors hover:border-zinc-700/80")}
     >
       <div className="flex items-start gap-2">
         <Mail size={14} className="mt-0.5 shrink-0 text-zinc-500" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-[13px] font-medium text-zinc-200">{email.subject}</p>
-            <ExternalLink size={12} className="mt-0.5 shrink-0 text-zinc-600" aria-hidden="true" />
-          </div>
-          <p className="truncate text-xs text-zinc-500">{email.fromName || email.fromEmail}</p>
+          <p className="line-clamp-2 text-[13px] font-medium leading-snug text-zinc-200">
+            {email.subject}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-zinc-500">
+            {email.fromName || email.fromEmail}
+          </p>
           {email.snippet && (
             <p className="mt-0.5 line-clamp-2 text-xs text-zinc-600">{email.snippet}</p>
           )}
@@ -33,8 +41,18 @@ function EmailRow({ email }) {
             <p className="mt-1 text-[10px] text-zinc-600">{formatDate(email.receivedAt)}</p>
           )}
         </div>
+        <ExternalLink size={12} className="mt-0.5 shrink-0 text-zinc-600" aria-hidden="true" />
       </div>
     </a>
+  )
+}
+
+function ImportantEmailsCard({ children, count }) {
+  return (
+    <Card padding="md" className={dashboardCardClass}>
+      <SectionHeader title="Important Emails" count={count} />
+      {children}
+    </Card>
   )
 }
 
@@ -44,39 +62,40 @@ export function ImportantEmailsSection() {
 
   if (status === GMAIL_STATUS.NOT_CONNECTED) {
     return (
-      <Card padding="md" className="flex min-h-[220px] flex-col">
-        <SectionHeader title="Important Emails" />
-        <SectionEmpty>Connect Google Workspace in Settings to see actionable unread emails.</SectionEmpty>
-      </Card>
+      <ImportantEmailsCard>
+        <SectionEmpty centered>
+          Connect Google Workspace in Settings to see actionable unread emails.
+        </SectionEmpty>
+      </ImportantEmailsCard>
     )
   }
 
   if (status === GMAIL_STATUS.PERMISSION_NEEDED) {
     return (
-      <Card padding="md" className="flex min-h-[220px] flex-col">
-        <SectionHeader title="Important Emails" />
-        <SectionEmpty>Gmail permission needed — connect Google Workspace in Settings.</SectionEmpty>
-      </Card>
+      <ImportantEmailsCard>
+        <SectionEmpty centered>
+          Gmail permission needed — connect Google Workspace in Settings.
+        </SectionEmpty>
+      </ImportantEmailsCard>
     )
   }
 
   const visible = expanded ? importantEmails : importantEmails.slice(0, LIMIT)
 
   return (
-    <Card padding="md" className="flex min-h-[220px] flex-col">
-      <SectionHeader title="Important Emails" count={importantEmails.length} />
+    <ImportantEmailsCard count={importantEmails.length}>
       {loading && importantEmails.length === 0 ? (
-        <SectionEmpty>Loading unread emails…</SectionEmpty>
+        <SectionEmpty centered>Loading unread emails…</SectionEmpty>
       ) : importantEmails.length === 0 ? (
-        <SectionEmpty>No unread emails likely needing action.</SectionEmpty>
+        <SectionEmpty centered>No unread emails likely needing action.</SectionEmpty>
       ) : (
         <>
-          <div className="space-y-1.5">
+          <div className={dashboardListClass}>
             {visible.map((email) => (
               <EmailRow key={email.id} email={email} />
             ))}
           </div>
-          <div className="mt-2 flex justify-end">
+          <div className={dashboardFooterClass}>
             <ViewAllToggle
               expanded={expanded}
               total={importantEmails.length}
@@ -86,6 +105,6 @@ export function ImportantEmailsSection() {
           </div>
         </>
       )}
-    </Card>
+    </ImportantEmailsCard>
   )
 }

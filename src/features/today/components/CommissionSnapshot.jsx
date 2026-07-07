@@ -3,6 +3,7 @@ import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { SectionHeader } from "./SectionHeader"
 import { formatCurrency } from "../../../lib/format"
 import { cn } from "../../../lib/cn"
+import { dashboardCardClass } from "./dashboardLayout"
 
 function Stat({ label, value, accent }) {
   const accents = {
@@ -14,7 +15,7 @@ function Stat({ label, value, accent }) {
   return (
     <div className="text-center">
       <p className="text-[11px] text-zinc-500">{label}</p>
-      <p className={cn("mt-0.5 text-base font-semibold", accents[accent])}>
+      <p className={cn("mt-0.5 text-base font-semibold tabular-nums", accents[accent])}>
         {formatCurrency(value)}
       </p>
     </div>
@@ -28,15 +29,17 @@ export function CommissionSnapshot({ snapshot }) {
     snapshot.outstanding.count > 0
 
   return (
-    <Card padding="md" className="flex min-h-[140px] flex-col">
+    <Card padding="md" className={dashboardCardClass}>
       <SectionHeader title="Commission Snapshot" />
       {!hasData ? (
-        <SectionEmpty>No commission activity yet.</SectionEmpty>
+        <SectionEmpty centered>No commission activity yet.</SectionEmpty>
       ) : (
-        <div className="grid grid-cols-3 divide-x divide-zinc-800/80">
-          <Stat label="Pending" value={snapshot.pending.total} accent="amber" />
-          <Stat label="Paid (month)" value={snapshot.paidThisMonth.total} accent="emerald" />
-          <Stat label="Outstanding" value={snapshot.outstanding.total} accent="indigo" />
+        <div className="flex flex-1 items-center">
+          <div className="grid w-full grid-cols-3 divide-x divide-zinc-800/80">
+            <Stat label="Pending" value={snapshot.pending.total} accent="amber" />
+            <Stat label="Paid (month)" value={snapshot.paidThisMonth.total} accent="emerald" />
+            <Stat label="Outstanding" value={snapshot.outstanding.total} accent="indigo" />
+          </div>
         </div>
       )}
     </Card>

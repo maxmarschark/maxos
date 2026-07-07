@@ -5,6 +5,11 @@ import { Card } from "../../../components/ui/Card"
 import { SectionEmpty } from "../../../components/ui/SectionEmpty"
 import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
+import {
+  dashboardCardClass,
+  dashboardFooterClass,
+  dashboardListClass,
+} from "./dashboardLayout"
 
 const LIMIT = 5
 
@@ -41,13 +46,13 @@ export function ActivityFeed({ activity }) {
   const visible = expanded ? activity : activity.slice(0, LIMIT)
 
   return (
-    <Card padding="md" className="flex min-h-[220px] flex-col">
+    <Card padding="md" className={dashboardCardClass}>
       <SectionHeader title="Activity Feed" count={activity.length} />
       {activity.length === 0 ? (
-        <SectionEmpty>No recent activity.</SectionEmpty>
+        <SectionEmpty centered>No recent activity.</SectionEmpty>
       ) : (
         <>
-          <div className="space-y-0.5">
+          <div className={dashboardListClass}>
             {visible.map((event) => {
               const Icon = typeIcons[event.type] ?? Package
               return (
@@ -57,9 +62,9 @@ export function ActivityFeed({ activity }) {
                   className="flex items-center gap-2.5 rounded-md px-1.5 py-2 transition-colors hover:bg-zinc-800/40"
                 >
                   <Icon size={13} className="shrink-0 text-zinc-600" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] text-zinc-200">{event.label}</p>
-                  </div>
+                  <p className="min-w-0 flex-1 truncate text-[13px] text-zinc-200">
+                    {event.label}
+                  </p>
                   <span className="shrink-0 text-[11px] text-zinc-600">
                     {formatActivityTime(event.timestamp)}
                   </span>
@@ -67,7 +72,7 @@ export function ActivityFeed({ activity }) {
               )
             })}
           </div>
-          <div className="mt-2 flex justify-end">
+          <div className={dashboardFooterClass}>
             <ViewAllToggle
               expanded={expanded}
               total={activity.length}

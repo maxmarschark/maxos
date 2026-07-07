@@ -57,7 +57,7 @@ export function TodayPage() {
 
       <TopMetricsRow metrics={dashboard.topMetrics} />
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <TodayCalendarSection eventsToday={dashboard.calendarEventsToday} />
         {isGmailEnabled() && <ImportantEmailsSection />}
         <TasksDueSection
@@ -72,7 +72,7 @@ export function TodayPage() {
         <OrdersAttentionSection ordersFlat={dashboard.ordersAttentionFlat} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <CommissionSnapshot snapshot={dashboard.commissionSnapshot} />
         <ActivityFeed activity={dashboard.activity} />
       </div>

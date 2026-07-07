@@ -6,22 +6,34 @@ import { SectionHeader } from "./SectionHeader"
 import { ViewAllToggle } from "./ViewAllToggle"
 import { EventSourceBadge } from "../../calendar/components/EventSourceBadge"
 import { formatEventTimeRange } from "../../calendar/utils"
+import {
+  dashboardCardClass,
+  dashboardFooterClass,
+  dashboardListClass,
+  dashboardRowClass,
+} from "./dashboardLayout"
+import { cn } from "../../../lib/cn"
 
 const LIMIT = 5
 
 function TodayEventRow({ event }) {
   const isGoogle = event.source === "google"
   const row = (
-    <div className="flex items-start gap-2 rounded-lg border border-zinc-800/60 bg-zinc-950/40 px-3 py-2">
+    <div className={cn(dashboardRowClass, "flex gap-2")}>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="truncate text-[13px] font-medium text-zinc-200">{event.title}</p>
-          <EventSourceBadge source={event.source} className="text-[10px] normal-case tracking-normal" />
+        <p className="line-clamp-2 text-[13px] font-medium leading-snug text-zinc-200">
+          {event.title}
+        </p>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          <EventSourceBadge
+            source={event.source}
+            className="shrink-0 text-[10px] normal-case tracking-normal"
+          />
+          <p className="truncate text-xs text-zinc-500">{formatEventTimeRange(event)}</p>
         </div>
-        <p className="truncate text-xs text-zinc-500">{formatEventTimeRange(event)}</p>
       </div>
       {isGoogle && event.htmlLink && (
-        <ExternalLink size={14} className="mt-1 shrink-0 text-zinc-600" aria-hidden="true" />
+        <ExternalLink size={14} className="mt-0.5 shrink-0 text-zinc-600" aria-hidden="true" />
       )}
     </div>
   )
@@ -42,18 +54,18 @@ export function TodayCalendarSection({ eventsToday }) {
   const visible = expanded ? eventsToday : eventsToday.slice(0, LIMIT)
 
   return (
-    <Card padding="md" className="flex min-h-[220px] flex-col">
+    <Card padding="md" className={dashboardCardClass}>
       <SectionHeader title="Today's Calendar" count={eventsToday.length} />
       {eventsToday.length === 0 ? (
-        <SectionEmpty>No calendar events today.</SectionEmpty>
+        <SectionEmpty centered>No calendar events today.</SectionEmpty>
       ) : (
         <>
-          <div className="space-y-1.5">
+          <div className={dashboardListClass}>
             {visible.map((event) => (
               <TodayEventRow key={event.id} event={event} />
             ))}
           </div>
-          <div className="mt-2 flex justify-end">
+          <div className={dashboardFooterClass}>
             <ViewAllToggle
               expanded={expanded}
               total={eventsToday.length}
