@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom"
+import { Link, NavLink } from "react-router-dom"
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react"
 import { navRoutes } from "../../config/routes"
 import { cn } from "../../lib/cn"
@@ -14,20 +14,35 @@ export function Sidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMobil
         )}
       >
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">
+          <Link
+            to="/"
+            onClick={onCloseMobile}
+            className="group flex cursor-pointer items-center gap-2.5 rounded-md transition-opacity duration-150 hover:opacity-90"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white transition-colors duration-150 group-hover:bg-indigo-500">
               M
             </div>
             <div>
-              <div className="text-sm font-semibold text-zinc-100">Max OS</div>
-              <div className="text-[10px] text-zinc-600">Sales OS</div>
+              <div className="text-sm font-semibold text-zinc-100 transition-colors duration-150 group-hover:text-white">
+                Max OS
+              </div>
+              <div className="text-[10px] text-zinc-600 transition-colors duration-150 group-hover:text-zinc-500">
+                Sales OS
+              </div>
             </div>
-          </div>
+          </Link>
         )}
         {collapsed && (
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white">
-            M
-          </div>
+          <Link
+            to="/"
+            onClick={onCloseMobile}
+            className="group flex cursor-pointer items-center justify-center rounded-md transition-opacity duration-150 hover:opacity-90"
+            title="Max OS"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white transition-colors duration-150 group-hover:bg-indigo-500">
+              M
+            </div>
+          </Link>
         )}
         <button
           type="button"
