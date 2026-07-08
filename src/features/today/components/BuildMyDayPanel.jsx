@@ -36,6 +36,12 @@ function formatGeneratedTime(date) {
   })
 }
 
+function actionBadgeLabel(action) {
+  if (action.calendarBlock) return "Calendar"
+  if (action.timedTask || action.flexibleTask) return "Task"
+  return priorityLabels[action.priority]
+}
+
 function ActionRowContent({ action }) {
   return (
     <>
@@ -52,10 +58,16 @@ function ActionRowContent({ action }) {
           )}
         </div>
         <Badge
-          variant={priorityVariants[action.priority]}
+          variant={
+            action.calendarBlock
+              ? "primary"
+              : action.timedTask || action.flexibleTask
+                ? "warning"
+                : priorityVariants[action.priority]
+          }
           className="shrink-0 self-start text-[10px] normal-case tracking-normal"
         >
-          {priorityLabels[action.priority]}
+          {actionBadgeLabel(action)}
         </Badge>
       </div>
     </>

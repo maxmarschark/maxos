@@ -6,7 +6,12 @@ import {
   getTaskLink,
 } from "../tasks/utils"
 import { PRIORITY_RANK } from "../tasks/constants"
-import { formatEventTimeRange, timeToMinutes } from "../calendar/utils"
+import { timeToMinutes } from "../calendar/utils"
+import {
+  buildTodayAgenda,
+  agendaItemToBuildAction,
+  flexibleAgendaItemToBuildAction,
+} from "./agenda"
 
 export function buildMyDay({
   orders,
@@ -18,30 +23,21 @@ export function buildMyDay({
   todayISO,
 }) {
   const actions = []
+  const agenda = buildTodayAgenda({ calendarEvents, tasks, todayISO })
+  const agendaTaskIds = agenda.taskIds
 
-  const todayBlocks = calendarEvents
-    .filter((event) => event.eventDate && isSameDay(event.eventDate, todayISO))
-    .sort((a, b) => timeToMinutes(a.eventTime) - timeToMinutes(b.eventTime))
-
-  todayBlocks.forEach((event) => {
-    const sourceLabel = event.source === "google" ? "Google" : "Max OS"
-    actions.push({
-      priority: 0,
-      sort: timeToMinutes(event.eventTime),
-      label: event.title,
-      detail: `${formatEventTimeRange(event)} · ${sourceLabel} calendar`,
-      link: event.source === "google" && event.htmlLink ? event.htmlLink : "/calendar",
-      calendarBlock: true,
-      externalLink: Boolean(event.source === "google" && event.htmlLink),
-      eventSource: event.source,
-    })
+  agenda.timed.forEach((item) => {
+    actions.push(agendaItemToBuildAction(item))
   })
 
-  const busyBlocks = todayBlocks.filter((event) => event.eventTime)
+  const busyBlocks = agenda.timed
+    .filter((item) => item.kind === "calendar" && item.event.eventTime)
+    .map((item) => item.event)
 
   tasks
     .filter((t) => isTaskActionable(t) && t.priority === "Urgent" && t.dueDate && isOverdue(t.dueDate, todayISO))
     .forEach((task) => {
+      if (agendaTaskIds.has(task.id)) return
       if (taskConflictsWithCalendar(task, busyBlocks)) return
       actions.push({
         priority: 1,
@@ -68,8 +64,13 @@ export function buildMyDay({
       }
     })
 
+  agenda.flexible.forEach((item) => {
+    actions.push(flexibleAgendaItemToBuildAction(item))
+  })
+
   tasks
     .filter((t) => {
+      if (agendaTaskIds.has(t.id)) return false
       if (!isTaskActionable(t) || !t.dueDate) return false
       const highPriority = t.priority === "High" || t.priority === "Urgent"
       const dueRelevant =
@@ -116,6 +117,7 @@ export function buildMyDay({
   tasks
     .filter(
       (t) =>
+        !agendaTaskIds.has(t.id) &&
         isTaskActionable(t) &&
         t.priority === "Urgent" &&
         t.dueDate &&
@@ -178,6 +180,7 @@ export function buildMyDay({
   tasks
     .filter((t) => isTaskActionable(t) && isAdminTask(t))
     .forEach((task) => {
+      if (agendaTaskIds.has(task.id)) return
       if (!task.dueDate || isSameDay(task.dueDate, todayISO) || isOverdue(task.dueDate, todayISO)) {
         actions.push({
           priority: 5,
@@ -193,6 +196,7 @@ export function buildMyDay({
   tasks
     .filter(
       (t) =>
+        !agendaTaskIds.has(t.id) &&
         isTaskActionable(t) &&
         !isAdminTask(t) &&
         (t.priority === "Medium" || t.priority === "Low") &&
@@ -271,3 +275,5 @@ function isAwaitingPaymentOrder(order) {
     ["Confirmed", "Shipped", "Delivered", "Sent"].includes(order.orderStatus)
   )
 }
+
+export { formatTaskDetail, getTaskLink }

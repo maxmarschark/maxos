@@ -39,7 +39,7 @@ export function formatEventTimeRange(event) {
   return "—"
 }
 
-function formatDisplayTime(time24) {
+export function formatDisplayTime(time24) {
   const [h, m] = time24.split(":").map(Number)
   if (Number.isNaN(h)) return time24
   const period = h >= 12 ? "PM" : "AM"

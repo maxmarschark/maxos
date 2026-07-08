@@ -8,13 +8,12 @@ import { PageHeader } from "../components/ui/PageHeader"
 import { StorageModeBadge } from "../components/ui/StorageModeBadge"
 import { TopMetricsRow } from "../features/today/components/TopMetricsRow"
 import { BuildMyDayPanel } from "../features/today/components/BuildMyDayPanel"
-import { TasksDueSection } from "../features/today/components/TasksDueSection"
+import { TodayAgendaSection } from "../features/today/components/TodayAgendaSection"
 import { CollectionsSection } from "../features/today/components/CollectionsSection"
 import { FollowUpsSection } from "../features/today/components/FollowUpsSection"
 import { OrdersAttentionSection } from "../features/today/components/OrdersAttentionSection"
 import { CommissionSnapshot } from "../features/today/components/CommissionSnapshot"
 import { ActivityFeed } from "../features/today/components/ActivityFeed"
-import { TodayCalendarSection } from "../features/today/components/TodayCalendarSection"
 import { ImportantEmailsSection } from "../features/today/components/ImportantEmailsSection"
 import { isGmailEnabled } from "../config/featureFlags"
 import { getTodayISO } from "../features/today/utils"
@@ -58,12 +57,11 @@ export function TodayPage() {
       <TopMetricsRow metrics={dashboard.topMetrics} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <TodayCalendarSection eventsToday={dashboard.calendarEventsToday} />
-        {isGmailEnabled() && <ImportantEmailsSection />}
-        <TasksDueSection
-          tasksFlat={dashboard.tasksDueFlat}
+        <TodayAgendaSection
+          agenda={dashboard.todayAgenda}
           onCompleteTask={handleCompleteTask}
         />
+        {isGmailEnabled() && <ImportantEmailsSection />}
         <CollectionsSection collections={dashboard.collections} />
         <FollowUpsSection
           followUpsFlat={dashboard.followUpsFlat}

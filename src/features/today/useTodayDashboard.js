@@ -8,6 +8,7 @@ import { useCalendar } from "../calendar/useCalendar"
 import { useGoogleCalendar } from "../google-calendar/useGoogleCalendar"
 import { mergeCalendarEvents, filterEventsOnDate } from "../calendar/utils"
 import { flattenTasksForToday } from "../tasks/utils"
+import { buildTodayAgenda } from "./agenda"
 import {
   buildCollectionsDue,
   buildCommissionSnapshot,
@@ -33,14 +34,17 @@ export function useTodayDashboard() {
   const todayISO = getTodayISO()
 
   return useMemo(() => {
-    const calendarEventsToday = filterEventsOnDate(
-      mergeCalendarEvents(maxOsEvents, googleEvents),
-      todayISO
-    )
+    const tasksDueFlat = flattenTasksForToday(tasks, todayISO)
+    const mergedCalendar = mergeCalendarEvents(maxOsEvents, googleEvents)
+    const calendarEventsToday = filterEventsOnDate(mergedCalendar, todayISO)
+    const todayAgenda = buildTodayAgenda({
+      calendarEvents: mergedCalendar,
+      tasksDueFlat,
+      todayISO,
+    })
     const collections = buildCollectionsDue(orders, todayISO)
     const followUps = buildContactFollowUps(contacts, todayISO)
     const followUpsFlat = flattenFollowUps(followUps)
-    const tasksDueFlat = flattenTasksForToday(tasks, todayISO)
     const ordersAttention = buildOrdersAttention(orders)
     const ordersAttentionFlat = flattenOrdersAttention(ordersAttention)
     const commissionSnapshot = buildCommissionSnapshot(commissions, todayISO)
@@ -55,11 +59,12 @@ export function useTodayDashboard() {
     return {
       todayISO,
       greeting: getGreeting(),
-      subtitle: formatTodaySubtitle(tasksDueFlat.length),
+      subtitle: formatTodaySubtitle(todayAgenda.totalCount),
       collections,
       followUps,
       followUpsFlat,
       tasksDueFlat,
+      todayAgenda,
       ordersAttention,
       ordersAttentionFlat,
       commissionSnapshot,
