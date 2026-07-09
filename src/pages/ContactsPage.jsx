@@ -23,6 +23,7 @@ import { useTableSort } from "../hooks/useTableSort"
 import { sortRowsByField } from "../lib/tableSort"
 import { CONTACT_TYPES } from "../features/contacts/constants"
 import { handleCloudSave } from "../lib/handleCloudSave"
+import { findDuplicateContactForAccount } from "../features/contacts/contactAccountPrefill"
 
 function filterContacts(contacts, { search, typeFilter }) {
   let result = [...contacts]
@@ -153,12 +154,25 @@ export function ContactsPage() {
         onSuccess: () => toast(`Updated ${name}`),
         onError: () => toast("Failed to update contact", "error"),
       })
-    } else {
-      await handleCloudSave(() => addContact(data), {
-        onSuccess: () => toast(`Added ${name}`),
-        onError: () => toast("Failed to add contact", "error"),
-      })
+      return
     }
+
+    const duplicate = findDuplicateContactForAccount(contacts, {
+      accountId: data.accountId,
+      email: data.email,
+    })
+    if (duplicate) {
+      toast(
+        `A contact with email ${data.email} already exists for this account`,
+        "warning"
+      )
+      return
+    }
+
+    await handleCloudSave(() => addContact(data), {
+      onSuccess: () => toast(`Added ${name}`),
+      onError: () => toast("Failed to add contact", "error"),
+    })
   }
 
   async function handleBulkDelete() {

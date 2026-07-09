@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Building2, Plus } from "lucide-react"
 import { useAccounts } from "../features/accounts/useAccounts"
+import { useContacts } from "../features/contacts/useContacts"
 import { AccountsTable } from "../features/accounts/components/AccountsTable"
 import { AccountFormModal } from "../features/accounts/components/AccountFormModal"
 import { DeleteAccountModal } from "../features/accounts/components/DeleteAccountModal"
@@ -18,6 +19,10 @@ import { usePagination } from "../hooks/usePagination"
 import { useTableSort } from "../hooks/useTableSort"
 import { sortRowsByField } from "../lib/tableSort"
 import { handleCloudSave } from "../lib/handleCloudSave"
+import {
+  buildPrimaryContactFromAccount,
+  findDuplicateContactForAccount,
+} from "../features/contacts/contactAccountPrefill"
 
 function filterAccounts(accounts, { search, stateFilter }) {
   let result = [...accounts]
@@ -51,6 +56,7 @@ export function AccountsPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { accounts, storageMode, addAccount, updateAccount, deleteAccount } = useAccounts()
+  const { contacts, addContact } = useContacts()
 
   const [search, setSearch] = useState("")
   const [stateFilter, setStateFilter] = useState("")
@@ -83,18 +89,48 @@ export function AccountsPage() {
     setFormOpen(true)
   }
 
-  async function handleFormSubmit(data) {
+  async function handleFormSubmit({ account, primaryContact }) {
     if (editingAccount) {
-      await handleCloudSave(() => updateAccount(editingAccount.id, data), {
-        onSuccess: () => toast(`Updated ${data.businessName}`),
+      await handleCloudSave(() => updateAccount(editingAccount.id, account), {
+        onSuccess: () => toast(`Updated ${account.businessName}`),
         onError: () => toast("Failed to update account", "error"),
       })
-    } else {
-      await handleCloudSave(() => addAccount(data), {
-        onSuccess: () => toast(`Added ${data.businessName}`),
-        onError: () => toast("Failed to add account", "error"),
-      })
+      return
     }
+
+    let savedAccount = null
+    const accountSaved = await handleCloudSave(() => addAccount(account), {
+      onSuccess: (entity) => {
+        savedAccount = entity
+        toast(`Added ${account.businessName}`)
+      },
+      onError: () => toast("Failed to add account", "error"),
+    })
+
+    if (!accountSaved || !savedAccount || !primaryContact) return
+
+    const contactData = buildPrimaryContactFromAccount(savedAccount, primaryContact)
+    if (!contactData.firstName && !contactData.lastName) {
+      toast("Account saved, but primary contact needs a name", "warning")
+      return
+    }
+
+    const duplicate = findDuplicateContactForAccount(contacts, {
+      accountId: savedAccount.id,
+      email: contactData.email,
+    })
+    if (duplicate) {
+      toast(
+        `Account saved. Skipped primary contact — email ${contactData.email} already exists.`,
+        "warning"
+      )
+      return
+    }
+
+    await handleCloudSave(() => addContact(contactData), {
+      onSuccess: () => toast(`Created primary contact for ${savedAccount.businessName}`),
+      onError: () => toast("Account saved, but primary contact failed to save", "error"),
+    })
   }
 
   async function handleDelete() {

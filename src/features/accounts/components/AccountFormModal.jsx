@@ -34,6 +34,11 @@ function buildInitialForm(account) {
       lastVisit: formatDateInput(account.lastVisit),
       nextFollowUp: formatDateInput(account.nextFollowUp),
       brandsInput: brandsToString(account.brandsCarried),
+      createPrimaryContact: false,
+      primaryContactName: "",
+      primaryContactRole: "",
+      primaryContactPhone: "",
+      primaryContactEmail: "",
     }
   }
   return {
@@ -41,15 +46,27 @@ function buildInitialForm(account) {
     brandsInput: "",
     lastVisit: "",
     nextFollowUp: "",
+    createPrimaryContact: false,
+    primaryContactName: "",
+    primaryContactRole: "",
+    primaryContactPhone: "",
+    primaryContactEmail: "",
   }
 }
 
 function AccountForm({ account, onSubmit }) {
+  const isEdit = Boolean(account)
   const [form, setForm] = useState(() => buildInitialForm(account))
   const [errors, setErrors] = useState({})
 
   function setField(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === "owner" && !prev.primaryContactName.trim()) {
+        next.primaryContactName = value
+      }
+      return next
+    })
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
@@ -59,24 +76,43 @@ function AccountForm({ account, onSubmit }) {
     if (!form.businessName.trim()) {
       nextErrors.businessName = "Business name is required"
     }
+    if (
+      !isEdit &&
+      form.createPrimaryContact &&
+      !form.primaryContactName.trim() &&
+      !form.owner.trim()
+    ) {
+      nextErrors.primaryContactName = "Contact name is required when creating a primary contact"
+    }
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
     }
 
     onSubmit({
-      businessName: form.businessName.trim(),
-      owner: form.owner.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      address: form.address.trim(),
-      city: form.city.trim(),
-      state: form.state,
-      website: form.website.trim(),
-      brandsCarried: parseBrands(form.brandsInput),
-      outstandingBalance: Number(form.outstandingBalance) || 0,
-      lastVisit: form.lastVisit || null,
-      nextFollowUp: form.nextFollowUp || null,
+      account: {
+        businessName: form.businessName.trim(),
+        owner: form.owner.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state,
+        website: form.website.trim(),
+        brandsCarried: parseBrands(form.brandsInput),
+        outstandingBalance: Number(form.outstandingBalance) || 0,
+        lastVisit: form.lastVisit || null,
+        nextFollowUp: form.nextFollowUp || null,
+      },
+      primaryContact:
+        !isEdit && form.createPrimaryContact
+          ? {
+              name: form.primaryContactName.trim() || form.owner.trim(),
+              role: form.primaryContactRole.trim(),
+              phone: form.primaryContactPhone.trim(),
+              email: form.primaryContactEmail.trim(),
+            }
+          : null,
     })
   }
 
@@ -212,6 +248,74 @@ function AccountForm({ account, onSubmit }) {
             onChange={(e) => setField("nextFollowUp", e.target.value)}
           />
         </FormField>
+
+        {!isEdit && (
+          <div className="space-y-4 border-t border-zinc-800/80 pt-4 sm:col-span-2">
+            <div>
+              <h3 className="text-sm font-medium text-zinc-200">Primary Contact</h3>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Optionally create a linked contact when this account is saved.
+              </p>
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                checked={form.createPrimaryContact}
+                onChange={(e) => setField("createPrimaryContact", e.target.checked)}
+                className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-600"
+              />
+              Create primary contact for this account
+            </label>
+
+            {form.createPrimaryContact && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Contact Name"
+                  htmlFor="primaryContactName"
+                  error={errors.primaryContactName}
+                >
+                  <Input
+                    id="primaryContactName"
+                    value={form.primaryContactName}
+                    onChange={(e) => setField("primaryContactName", e.target.value)}
+                    placeholder="Marcus Chen"
+                    error={errors.primaryContactName}
+                  />
+                </FormField>
+
+                <FormField label="Contact Role" htmlFor="primaryContactRole">
+                  <Input
+                    id="primaryContactRole"
+                    value={form.primaryContactRole}
+                    onChange={(e) => setField("primaryContactRole", e.target.value)}
+                    placeholder="Owner, Buyer..."
+                  />
+                </FormField>
+
+                <FormField label="Contact Phone" htmlFor="primaryContactPhone">
+                  <Input
+                    id="primaryContactPhone"
+                    type="tel"
+                    value={form.primaryContactPhone}
+                    onChange={(e) => setField("primaryContactPhone", e.target.value)}
+                    placeholder={form.phone || "(512) 555-0142"}
+                  />
+                </FormField>
+
+                <FormField label="Contact Email" htmlFor="primaryContactEmail">
+                  <Input
+                    id="primaryContactEmail"
+                    type="email"
+                    value={form.primaryContactEmail}
+                    onChange={(e) => setField("primaryContactEmail", e.target.value)}
+                    placeholder={form.email || "owner@business.com"}
+                  />
+                </FormField>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Form>
   )

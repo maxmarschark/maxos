@@ -11,8 +11,12 @@ import {
   PREFERRED_CONTACT_METHODS,
 } from "../constants"
 import { US_STATES } from "../../accounts/constants"
+import {
+  applyAccountFieldsToForm,
+  buildContactSeedFromAccount,
+} from "../contactAccountPrefill"
 
-function buildInitialForm(contact) {
+function buildInitialForm(contact, seedAccount) {
   if (contact) {
     return {
       firstName: contact.firstName,
@@ -32,22 +36,23 @@ function buildInitialForm(contact) {
       nextFollowUpDate: contact.nextFollowUpDate ?? "",
     }
   }
+  if (seedAccount) {
+    return buildContactSeedFromAccount(seedAccount)
+  }
   return { ...EMPTY_CONTACT, state: "TX" }
 }
 
-function ContactForm({ contact, accounts, brands, onSubmit }) {
-  const [form, setForm] = useState(() => buildInitialForm(contact))
+function ContactForm({ contact, seedAccount, accounts, brands, onSubmit }) {
+  const [form, setForm] = useState(() => buildInitialForm(contact, seedAccount))
   const [errors, setErrors] = useState({})
 
   function setField(field, value) {
     setForm((prev) => {
-      const next = { ...prev, [field]: value }
-      if (field === "accountId" && value) {
-        const account = accounts.find((a) => a.id === value)
-        if (account) {
-          next.company = ""
-          if (!next.city) next.city = account.city
-          if (!next.state || next.state === "TX") next.state = account.state
+      let next = { ...prev, [field]: value }
+      if (field === "accountId") {
+        if (value) {
+          const account = accounts.find((a) => a.id === value)
+          next = applyAccountFieldsToForm({ ...next, accountId: value }, account)
         }
       }
       return next
@@ -148,6 +153,18 @@ function ContactForm({ contact, accounts, brands, onSubmit }) {
               value={form.company}
               onChange={(e) => setField("company", e.target.value)}
               placeholder="Company name if not linked to account"
+            />
+          </FormField>
+        )}
+
+        {form.accountId && (
+          <FormField label="Company" htmlFor="companyDisplay" className="sm:col-span-2">
+            <Input
+              id="companyDisplay"
+              value={
+                accounts.find((a) => a.id === form.accountId)?.businessName ?? ""
+              }
+              disabled
             />
           </FormField>
         )}
@@ -269,10 +286,11 @@ export function ContactFormModal({
   onClose,
   onSubmit,
   contact,
+  seedAccount,
   accounts,
   brands,
 }) {
-  const formKey = contact?.id ?? "new"
+  const formKey = contact?.id ?? seedAccount?.id ?? "new"
 
   function handleSubmit(data) {
     onSubmit(data)
@@ -287,7 +305,9 @@ export function ContactFormModal({
       description={
         contact
           ? "Update contact details and follow-up info."
-          : "Add a buyer, owner, rep, or brand contact."
+          : seedAccount
+            ? `Add a contact for ${seedAccount.businessName}. Account details are pre-filled.`
+            : "Add a buyer, owner, rep, or brand contact."
       }
       size="lg"
       footer={
@@ -304,6 +324,7 @@ export function ContactFormModal({
       <ContactForm
         key={formKey}
         contact={contact}
+        seedAccount={seedAccount}
         accounts={accounts}
         brands={brands}
         onSubmit={handleSubmit}

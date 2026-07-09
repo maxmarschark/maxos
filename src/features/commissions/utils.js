@@ -38,7 +38,11 @@ export function buildCommissionRecords(orders, brands, accounts, storedMeta) {
       const meta = metaByOrderId.get(order.id)
 
       const commissionPercent = resolveCommissionPercent(order, brand)
-      const calculatedAmount = calcCommissionAmount(order.orderAmount, commissionPercent)
+      const orderAmount = Number(order.orderAmount) || 0
+      const calculatedAmount =
+        orderAmount > 0
+          ? calcCommissionAmount(orderAmount, commissionPercent)
+          : Number(order.commissionAmount) || 0
       const amountManual = meta?.amountManual ?? false
       const commissionAmount = amountManual
         ? Number(meta?.amountOverride ?? calculatedAmount)
@@ -51,7 +55,7 @@ export function buildCommissionRecords(orders, brands, accounts, storedMeta) {
         accountName: account?.businessName ?? "Unknown Account",
         brandId: order.brandId,
         brandName: brand?.brandName ?? "Unknown Brand",
-        orderAmount: Number(order.orderAmount) || 0,
+        orderAmount,
         commissionPercent,
         commissionAmount,
         calculatedAmount,

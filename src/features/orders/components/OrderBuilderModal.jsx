@@ -17,8 +17,10 @@ import {
   calcOrderTotals,
   createLineItemFromProduct,
   generateOrderNumber,
+  prepareOrderForSave,
   updateLineItem,
 } from "../orderBuilder"
+import { traceOrderAmount } from "../orderSaveTrace"
 import { formatCurrencyDetailed } from "../../../lib/format"
 
 function buildInitialForm(order) {
@@ -136,7 +138,14 @@ function OrderBuilderForm({ order, accounts, brands, onSubmit }) {
     }
 
     const hasLineItems = form.lineItems.length > 0
-    const payload = {
+    traceOrderAmount("0 OrderBuilderModal form before save", {
+      lineItems: form.lineItems,
+      discountAmount: form.discountAmount,
+      commissionPercent: form.commissionPercent,
+      uiTotals: totals,
+    })
+
+    const payload = prepareOrderForSave({
       orderNumber: form.orderNumber.trim(),
       accountId: form.accountId,
       brandId: form.brandId,
@@ -145,18 +154,20 @@ function OrderBuilderForm({ order, accounts, brands, onSubmit }) {
       productsNotes: hasLineItems
         ? buildProductsNotes(form.lineItems)
         : order?.productsNotes ?? "",
-      subtotalAmount: hasLineItems ? totals.subtotalAmount : order?.subtotalAmount ?? order?.orderAmount ?? 0,
-      discountAmount: hasLineItems ? totals.discountAmount : order?.discountAmount ?? 0,
-      orderAmount: hasLineItems ? totals.orderAmount : order?.orderAmount ?? 0,
-      commissionPercent: Number(form.commissionPercent) || 0,
-      commissionAmount: hasLineItems
-        ? totals.commissionAmount
-        : Math.round((Number(order?.orderAmount) || 0) * (Number(form.commissionPercent) || 0) / 100 * 100) / 100,
+      discountAmount: form.discountAmount,
+      commissionPercent: form.commissionPercent,
       orderStatus: form.orderStatus,
       paymentStatus: form.paymentStatus,
       paymentDueDate: form.paymentDueDate || null,
       notes: form.notes.trim(),
-    }
+      subtotalAmount: order?.subtotalAmount,
+      orderAmount: order?.orderAmount,
+    })
+
+    traceOrderAmount("1 OrderBuilderModal payload leaving", payload, {
+      uiOrderAmount: totals.orderAmount,
+      payloadMatchesUi: payload.orderAmount === totals.orderAmount,
+    })
 
     onSubmit(payload)
   }

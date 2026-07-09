@@ -37,7 +37,8 @@ export function ToastProvider({ children }) {
               "pointer-events-auto flex items-start gap-2 rounded-lg border px-4 py-3 shadow-lg shadow-black/40",
               t.variant === "success" &&
                 "border-emerald-900/50 bg-emerald-950/90 text-emerald-100",
-              t.variant === "error" && "border-red-900/50 bg-red-950/90 text-red-100"
+              t.variant === "error" && "border-red-900/50 bg-red-950/90 text-red-100",
+              t.variant === "warning" && "border-amber-900/50 bg-amber-950/90 text-amber-100"
             )}
           >
             {t.variant === "success" && (

@@ -13,7 +13,9 @@ import { useBrands } from "../brands/useBrands"
 import { ORDERS_STORAGE_KEY, EMPTY_ORDER } from "./constants"
 import { buildSeedOrders } from "./seed"
 import { OrdersContext } from "./orders-context"
-import { calcCommissionAmount, enrichOrders } from "./utils"
+import { prepareOrderForSave } from "./orderBuilder"
+import { traceOrderAmount } from "./orderSaveTrace"
+import { enrichOrders } from "./utils"
 
 function loadLocalOrders() {
   return loadFromStorage(ORDERS_STORAGE_KEY, buildSeedOrders())
@@ -71,16 +73,19 @@ export function OrdersProvider({ children }) {
 
   const addOrder = useCallback(
     async (data) => {
+      traceOrderAmount("2 OrdersProvider.addOrder received", data)
+
       const now = new Date().toISOString()
-      const commissionAmount = calcCommissionAmount(data.orderAmount, data.commissionPercent)
+      const prepared = prepareOrderForSave(data)
       const order = {
         ...EMPTY_ORDER,
-        ...data,
-        commissionAmount,
+        ...prepared,
         id: generateId(),
         createdAt: now,
         updatedAt: now,
       }
+
+      traceOrderAmount("2b OrdersProvider.addOrder entity for cloud", order)
 
       const { insertCloudOrder } = await loadCloudApi()
       const persisted = await persistCloudInsert({
@@ -103,11 +108,11 @@ export function OrdersProvider({ children }) {
       const existing = orders.find((o) => o.id === id)
       if (!existing) return false
 
-      const merged = { ...existing, ...data, updatedAt: new Date().toISOString() }
-      merged.commissionAmount = calcCommissionAmount(
-        merged.orderAmount,
-        merged.commissionPercent
-      )
+      const merged = prepareOrderForSave({
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      })
 
       const { updateCloudOrder } = await loadCloudApi()
       const persisted = await persistCloudUpdate({

@@ -146,7 +146,7 @@ export function AccountProfilePage() {
 
       <div>
         {activeTab === "overview" && <OverviewTab account={account} brands={brands} />}
-        {activeTab === "contacts" && <AccountContactsTab accountId={account.id} />}
+        {activeTab === "contacts" && <AccountContactsTab account={account} />}
         {activeTab === "orders" && <AccountOrdersTab accountId={account.id} />}
         {activeTab === "tasks" && (
           <TasksTab
@@ -173,7 +173,7 @@ export function AccountProfilePage() {
       <AccountFormModal
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        onSubmit={(data) => updateAccount(account.id, data)}
+        onSubmit={(data) => updateAccount(account.id, data.account ?? data)}
         account={account}
       />
 
